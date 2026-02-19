@@ -26,7 +26,6 @@ jobs:
         publish_guides: true # publish guides automatically
         delete_untracked_guides: true # removes guides from hex that were also deleted in your repository
         hex_url: https://app.hex.tech # by default, is https://app.hex.tech - change if you have a single tenant hosted stack
-        
 ```
 
 Which references a `hex_context.config.json` file

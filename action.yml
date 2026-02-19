@@ -1,0 +1,39 @@
+name: Hex Context Toolkit
+description: Upload external context to Hex
+inputs:
+  publish_guides:
+    description: Publish guides automatically when action is run. If false, the draft guide will be updated but not published
+    type: boolean
+    default: true
+  delete_untracked_guides:
+    description: Delete guides that are no longer tracked in the config file. If false, guides that have been synced in the past but are no longer tracked will not be deleted from Hex
+    type: boolean
+    default: true
+  config_file:
+    description: |
+      The path to the config file. This file should be a JSON file that includes the following properties
+      {
+        "guides": [
+          {
+            "path": "folder/guide.md",
+            "hex_file_path": "github_sourced_guide.md" // This will be how the file is named in Hex, this is optional
+          },
+          {
+            "path": "folder/another_guide.md"
+          },
+          {
+            "pattern": "folder/**/*.guide.md"
+          }
+        ],
+      }
+    default: ./hex_context.config.json
+  token:
+    description: A token with guide write access to Hex
+    required: true
+  hex_url:
+    description: The URL of the Hex instance
+    default: https://app.hex.tech
+
+runs:
+  using: node24
+  main: dist/index.js

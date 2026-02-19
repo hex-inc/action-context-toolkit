@@ -1,0 +1,156 @@
+import * as core from "@actions/core";
+import fs from "fs/promises";
+import path from "path";
+import { ParsedConfig } from "../types";
+import { getFilesInDir } from "../fileUtils";
+import picomatch from "picomatch";
+
+type LoadedGuide = {
+  path: string;
+  hexFilePath: string;
+  content: string;
+};
+
+export const getGuidesFromLocal = async (parsedConfig: {
+  inputs: Pick<ParsedConfig["inputs"], "guides">;
+}): Promise<LoadedGuide[]> => {
+  const guideSet: Map<string, { path: string; hexFilePath: string }> =
+    new Map();
+  const patternSet: Set<string> = new Set();
+  for (const guide of parsedConfig.inputs.guides) {
+    if ("path" in guide) {
+      const normalizedPath = path.normalize(guide.path);
+      guideSet.set(normalizedPath, {
+        path: normalizedPath,
+        hexFilePath: guide.hexFilePath || normalizedPath,
+      });
+    } else if (guide.pattern) {
+      patternSet.add(guide.pattern);
+    }
+  }
+  const guidesPathText = Array.from(guideSet.keys()).join(", ");
+  const guidesPatternText = Array.from(patternSet).join(", ");
+  core.info(
+    `Looking for guides: ${guidesPathText ? `paths: ${guidesPathText}` : ""} ${guidesPatternText ? `patterns: ${guidesPatternText}` : ""}`,
+  );
+
+  const loadedGuides: LoadedGuide[] = [];
+  for await (const filePath of getFilesInDir(process.cwd())) {
+    const content = await fs.readFile(filePath, "utf8");
+    const maybeGuideFromPath = guideSet.get(filePath);
+    if (maybeGuideFromPath) {
+      loadedGuides.push({
+        path: filePath,
+        hexFilePath: maybeGuideFromPath.hexFilePath,
+        content,
+      });
+    } else if (
+      // This should match https://github.com/micromatch/picomatch, and have a rust equivalent https://docs.rs/satch/latest/satch/
+      Array.from(patternSet).some((pattern) =>
+        picomatch.isMatch(filePath, pattern),
+      )
+    ) {
+      loadedGuides.push({
+        path: filePath,
+        hexFilePath: filePath,
+        content,
+      });
+    }
+  }
+  return loadedGuides;
+};
+
+export const uploadAndMaybePublishGuides = async (
+  parsedConfig: ParsedConfig,
+  loadedGuides: LoadedGuide[],
+) => {
+  core.info(`Uploading ${loadedGuides.length} guides to Hex as draft guides`);
+  core.info(
+    `Guides: ${loadedGuides.map((guide) => (guide.hexFilePath === guide.path ? `${guide.path}` : `${guide.path} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
+  );
+  // We may need to batch this call in the future
+  const upsertedGuides = await parsedConfig.hexClient.upsertDraftGuides({
+    files: loadedGuides.map((guide) => ({
+      filePath: guide.path,
+      contents: guide.content,
+      externalContextSource: {
+        source: "github",
+        base: parsedConfig.envVars.baseUrl,
+        owner: parsedConfig.envVars.owner,
+        repo: parsedConfig.envVars.repo,
+        commitHash: parsedConfig.envVars.sha,
+        branch: parsedConfig.envVars.branch,
+        path: guide.hexFilePath,
+      },
+    })),
+  });
+  core.info(
+    `Successfully uploaded ${upsertedGuides.files.length} guides to Hex as draft guides`,
+  );
+
+  if (parsedConfig.inputs.publishGuides) {
+    core.info("Publishing guides");
+    await parsedConfig.hexClient.publishDraftGuides({
+      orgGuideFileIds: upsertedGuides.files.map((guide) => guide.id),
+    });
+    core.info("Successfully published guides");
+  } else {
+    core.info(
+      "Not publishing guides automatically. Set publish_guides to true to publish guides",
+    );
+  }
+};
+
+export const deleteUntrackedGuides = async (
+  parsedConfig: ParsedConfig,
+  loadedGuides: LoadedGuide[],
+) => {
+  const draftGuides = await parsedConfig.hexClient.getDraftGuides({
+    externalSource: {
+      source: "github",
+      base: parsedConfig.envVars.baseUrl,
+      owner: parsedConfig.envVars.owner,
+      repo: parsedConfig.envVars.repo,
+    },
+  });
+
+  const loadedGuideHexFilePaths = new Set(
+    loadedGuides.map((guide) => guide.hexFilePath),
+  );
+
+  const untrackedGuides = draftGuides.files.filter(
+    (guide) => !loadedGuideHexFilePaths.has(guide.filePath),
+  );
+  if (untrackedGuides.length > 0) {
+    core.info(`Deleting ${untrackedGuides.length} untracked guides from Hex`);
+    core.info(
+      `Removing the following guides from Hex: ${untrackedGuides.map((guide) => guide.filePath).join(", ")}`,
+    );
+    const results = await Promise.allSettled(
+      untrackedGuides.map((guide) =>
+        parsedConfig.hexClient.deleteGuide(guide.id),
+      ),
+    );
+    if (results.some((result) => result.status === "rejected")) {
+      core.error(
+        `Failed to delete the following guides: ${results
+          .filter((result) => result.status === "rejected")
+          .map((result) => result.reason)
+          .join(", ")}`,
+      );
+    } else {
+      core.info("Successfully deleted untracked guides");
+    }
+  } else {
+    core.info("No untracked guides found");
+  }
+};
+
+export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
+  const loadedGuides = await getGuidesFromLocal(parsedConfig);
+  await uploadAndMaybePublishGuides(parsedConfig, loadedGuides);
+
+  if (parsedConfig.inputs.deleteUntrackedGuides) {
+    await deleteUntrackedGuides(parsedConfig, loadedGuides);
+  }
+};
