@@ -98,8 +98,8 @@ export class HexClient {
 
   async upsertDraftGuides(guides: UpsertDraftGuideRequest) {
     const response = await this.makeRequest<UpsertDraftGuideResponse>(
-      "/api/v1/guides/upsert-draft",
-      "POST",
+      "/api/v1/guides/draft",
+      "PUT",
       guides,
     );
     if (response.status === "error") {
@@ -110,7 +110,7 @@ export class HexClient {
 
   async publishDraftGuides(guides: PublishDraftGuideRequest) {
     const response = await this.makeRequest<PublishDraftGuideResponse>(
-      "/api/v1/guides/publish-draft",
+      "/api/v1/guides/publish",
       "POST",
       guides,
     );
@@ -122,7 +122,7 @@ export class HexClient {
 
   async getDraftGuides(request: ListDraftGuidesRequest) {
     const response = await this.makeRequest<ListDraftGuidesResponse>(
-      `/api/v1/guides/list-draft?externalSource=${encodeURIComponent(JSON.stringify(request.externalSource))}`,
+      `/api/v1/guides/draft/list?externalSource=${encodeURIComponent(JSON.stringify(request.externalSource))}`,
       "GET",
     );
     if (response.status === "error") {
@@ -133,7 +133,7 @@ export class HexClient {
 
   async deleteGuide(guideId: string) {
     const response = await this.makeRequest<void>(
-      `/api/v1/guides/${guideId}`,
+      `/api/v1/guides/draft/${guideId}`,
       "DELETE",
     );
     if (response.status === "error") {
