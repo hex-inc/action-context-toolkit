@@ -1,0 +1,30 @@
+name: Test and Lint
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        run: npm install
+      - name: Test
+        run: npm run test
+      - name: Lint
+        run: npm run lint
+      - name: Check for uncommitted changes
+        run: |
+          npm run build
+          git diff HEAD --quiet --exit-code dist/index.js
+
+          if [ $? -eq 1 ]
+          then
+            echo "Uncommitted changes detected in dist/index.js"
+            echo "Please run 'npm run build' and commit the changes"
+            exit 1
+          else
+            exit 0
+          fi
