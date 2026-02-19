@@ -14,47 +14,55 @@ type LoadedGuide = {
 export const getGuidesFromLocal = async (parsedConfig: {
   inputs: Pick<ParsedConfig["inputs"], "guides">;
 }): Promise<LoadedGuide[]> => {
-  const guideSet: Map<string, { path: string; hexFilePath: string }> =
+  const guideMap: Map<string, { path: string; hexFilePath: string }> =
     new Map();
-  const patternSet: Set<string> = new Set();
+  const patternMap: Map<string, { transform?: { pickFileStem?: boolean } }> =
+    new Map();
   for (const guide of parsedConfig.inputs.guides) {
     if ("path" in guide) {
       const normalizedPath = path.normalize(guide.path);
-      guideSet.set(normalizedPath, {
+      guideMap.set(normalizedPath, {
         path: normalizedPath,
         hexFilePath: guide.hexFilePath || normalizedPath,
       });
     } else if (guide.pattern) {
-      patternSet.add(guide.pattern);
+      patternMap.set(guide.pattern, {
+        transform: guide.transform,
+      });
     }
   }
-  const guidesPathText = Array.from(guideSet.keys()).join(", ");
-  const guidesPatternText = Array.from(patternSet).join(", ");
+  const guidesPathText = Array.from(guideMap.keys()).join(", ");
+  const guidesPatternText = Array.from(patternMap.keys()).join(", ");
   core.info(
-    `Looking for guides: ${guidesPathText ? `paths: ${guidesPathText}` : ""} ${guidesPatternText ? `patterns: ${guidesPatternText}` : ""}`,
+    `Looking for guides: ${guidesPathText ? `paths: ${guidesPathText}` : ""} ${guidesPatternText ? `patterns: ${guidesPatternText}` : ""}`
   );
 
   const loadedGuides: LoadedGuide[] = [];
   for await (const filePath of getFilesInDir(process.cwd())) {
     const content = await fs.readFile(filePath, "utf8");
-    const maybeGuideFromPath = guideSet.get(filePath);
+    const maybeGuideFromPath = guideMap.get(filePath);
     if (maybeGuideFromPath) {
       loadedGuides.push({
         path: filePath,
         hexFilePath: maybeGuideFromPath.hexFilePath,
         content,
       });
-    } else if (
-      // This should match https://github.com/micromatch/picomatch, and have a rust equivalent https://docs.rs/satch/latest/satch/
-      Array.from(patternSet).some((pattern) =>
-        picomatch.isMatch(filePath, pattern),
-      )
-    ) {
-      loadedGuides.push({
-        path: filePath,
-        hexFilePath: filePath,
-        content,
-      });
+    } else {
+      for (const [pattern, { transform }] of patternMap.entries()) {
+        // This should match https://github.com/micromatch/picomatch, and have a rust equivalent https://docs.rs/satch/latest/satch/
+        if (picomatch.isMatch(filePath, pattern)) {
+          let hexFilePath = filePath;
+          if (transform?.pickFileStem) {
+            hexFilePath = path.basename(filePath);
+          }
+          loadedGuides.push({
+            path: filePath,
+            hexFilePath,
+            content,
+          });
+          break;
+        }
+      }
     }
   }
   return loadedGuides;
@@ -62,11 +70,11 @@ export const getGuidesFromLocal = async (parsedConfig: {
 
 export const uploadAndMaybePublishGuides = async (
   parsedConfig: ParsedConfig,
-  loadedGuides: LoadedGuide[],
+  loadedGuides: LoadedGuide[]
 ) => {
   core.info(`Uploading ${loadedGuides.length} guides to Hex as draft guides`);
   core.info(
-    `Guides: ${loadedGuides.map((guide) => (guide.hexFilePath === guide.path ? `${guide.path}` : `${guide.path} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
+    `Guides: ${loadedGuides.map((guide) => (guide.hexFilePath === guide.path ? `${guide.path}` : `${guide.path} (hex path: ${guide.hexFilePath})`)).join(", ")}`
   );
   // We may need to batch this call in the future
   const upsertedGuides = await parsedConfig.hexClient.upsertDraftGuides({
@@ -85,7 +93,7 @@ export const uploadAndMaybePublishGuides = async (
     })),
   });
   core.info(
-    `Successfully uploaded ${upsertedGuides.files.length} guides to Hex as draft guides`,
+    `Successfully uploaded ${upsertedGuides.files.length} guides to Hex as draft guides`
   );
 
   if (parsedConfig.inputs.publishGuides) {
@@ -96,14 +104,14 @@ export const uploadAndMaybePublishGuides = async (
     core.info("Successfully published guides");
   } else {
     core.info(
-      "Not publishing guides automatically. Set publish_guides to true to publish guides",
+      "Not publishing guides automatically. Set publish_guides to true to publish guides"
     );
   }
 };
 
 export const deleteUntrackedGuides = async (
   parsedConfig: ParsedConfig,
-  loadedGuides: LoadedGuide[],
+  loadedGuides: LoadedGuide[]
 ) => {
   const draftGuides = await parsedConfig.hexClient.getDraftGuides({
     externalSource: {
@@ -115,28 +123,28 @@ export const deleteUntrackedGuides = async (
   });
 
   const loadedGuideHexFilePaths = new Set(
-    loadedGuides.map((guide) => guide.hexFilePath),
+    loadedGuides.map((guide) => guide.hexFilePath)
   );
 
   const untrackedGuides = draftGuides.files.filter(
-    (guide) => !loadedGuideHexFilePaths.has(guide.filePath),
+    (guide) => !loadedGuideHexFilePaths.has(guide.filePath)
   );
   if (untrackedGuides.length > 0) {
     core.info(`Deleting ${untrackedGuides.length} untracked guides from Hex`);
     core.info(
-      `Removing the following guides from Hex: ${untrackedGuides.map((guide) => guide.filePath).join(", ")}`,
+      `Removing the following guides from Hex: ${untrackedGuides.map((guide) => guide.filePath).join(", ")}`
     );
     const results = await Promise.allSettled(
       untrackedGuides.map((guide) =>
-        parsedConfig.hexClient.deleteGuide(guide.id),
-      ),
+        parsedConfig.hexClient.deleteGuide(guide.id)
+      )
     );
     if (results.some((result) => result.status === "rejected")) {
       core.error(
         `Failed to delete the following guides: ${results
           .filter((result) => result.status === "rejected")
           .map((result) => result.reason)
-          .join(", ")}`,
+          .join(", ")}`
       );
     } else {
       core.info("Successfully deleted untracked guides");

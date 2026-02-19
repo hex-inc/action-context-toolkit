@@ -71,7 +71,7 @@ describe("getGuidesFromLocal", () => {
       inputs: {
         guides: [
           { pattern: "guides/*.md" },
-          { pattern: "another_folder/**/*.md" },
+          { pattern: "another_folder/**/*.md", transform: { pickFileStem: true } },
         ],
       },
     });
@@ -90,17 +90,17 @@ describe("getGuidesFromLocal", () => {
         },
         {
           "content": "Content of another_folder/abc.md",
-          "hexFilePath": "another_folder/abc.md",
+          "hexFilePath": "abc.md",
           "path": "another_folder/abc.md",
         },
         {
           "content": "Content of another_folder/def/guide.md",
-          "hexFilePath": "another_folder/def/guide.md",
+          "hexFilePath": "guide.md",
           "path": "another_folder/def/guide.md",
         },
         {
           "content": "Content of another_folder/def/something.md",
-          "hexFilePath": "another_folder/def/something.md",
+          "hexFilePath": "something.md",
           "path": "another_folder/def/something.md",
         },
       ]
