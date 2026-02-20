@@ -1,4 +1,4 @@
-# Hex Context Toolkit
+# Action context toolkit
 
 Upload external context to Hex. Supports uploading guide files
 

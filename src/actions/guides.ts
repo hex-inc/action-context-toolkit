@@ -75,10 +75,10 @@ export const getGuidesFromLocal = async (parsedConfig: {
   return loadedGuides;
 };
 
-export const uploadAndMaybePublishGuides = async (
+export const uploadGuides = async (
   parsedConfig: ParsedConfig,
   loadedGuides: LoadedGuide[],
-) => {
+): Promise<{ guideFileIds: string[] }> => {
   core.info(`Uploading ${loadedGuides.length} guides to Hex as draft guides`);
   core.info(
     `Guides: ${loadedGuides.map((guide) => (guide.hexFilePath === guide.path ? `${guide.path}` : `${guide.path} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
@@ -110,17 +110,21 @@ export const uploadAndMaybePublishGuides = async (
     `Successfully uploaded ${upsertedGuides.files.length} guides to Hex as draft guides`,
   );
 
-  if (parsedConfig.inputs.publishGuides) {
-    core.info("Publishing guides");
-    await parsedConfig.hexClient.publishDraftGuides({
-      orgGuideFileIds: upsertedGuides.files.map((guide) => guide.id),
-    });
-    core.info("Successfully published guides");
-  } else {
-    core.info(
-      "Not publishing guides automatically. Set publish_guides to true to publish guides",
-    );
-  }
+  return {
+    guideFileIds: upsertedGuides.files.map((guide) => guide.id),
+  };
+};
+
+export const publishGuides = async (
+  parsedConfig: ParsedConfig,
+  guideFileIds: string[],
+) => {
+  core.info("Publishing guides");
+
+  await parsedConfig.hexClient.publishDraftGuides({
+    orgGuideFileIds: guideFileIds,
+  });
+  core.info("Successfully published guides");
 };
 
 export const deleteUntrackedGuides = async (
@@ -174,9 +178,21 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
     core.info("No guides found");
     return;
   }
-  await uploadAndMaybePublishGuides(parsedConfig, loadedGuides);
+  const { guideFileIds } = await uploadGuides(parsedConfig, loadedGuides);
+  if (parsedConfig.inputs.publishGuides) {
+    await publishGuides(parsedConfig, guideFileIds);
+  } else {
+    core.info(
+      "Not publishing guides automatically. Set publish_guides to true to publish guides",
+    );
+  }
 
   if (parsedConfig.inputs.deleteUntrackedGuides) {
+    core.info("Checking if there are any untracked guides");
     await deleteUntrackedGuides(parsedConfig, loadedGuides);
+  } else {
+    core.info(
+      "Not deleting untracked guides. Set delete_untracked_guides to true to delete untracked guides",
+    );
   }
 };
