@@ -84,7 +84,7 @@ export const uploadAndMaybePublishGuides = async (
     `Guides: ${loadedGuides.map((guide) => (guide.hexFilePath === guide.path ? `${guide.path}` : `${guide.path} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
   );
   const files = loadedGuides.map((guide) => ({
-    filePath: guide.path,
+    filePath: guide.hexFilePath,
     contents: guide.content,
     externalSource: {
       source: "github" as const,
@@ -93,7 +93,7 @@ export const uploadAndMaybePublishGuides = async (
       repo: parsedConfig.envVars.repo,
       commitHash: parsedConfig.envVars.sha,
       branch: parsedConfig.envVars.branch,
-      path: guide.hexFilePath,
+      path: guide.path,
     },
   }));
   if (core.isDebug()) {
