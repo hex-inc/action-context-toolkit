@@ -80,6 +80,7 @@ export class HexClient {
       method,
       headers: {
         Authorization: `Bearer ${this.hexToken}`,
+        "Accept": "application/json",
         "Content-Type": "application/json",
       },
       body: body ? JSON.stringify(body) : undefined,
