@@ -21,4 +21,12 @@ To test this action e2e, you can reference this action in your own github action
 
 ## Publishing a new version
 
-Tagging a new release - this section is in progress
+To create a new release:
+
+- Ensure the latest code we want to release is merged to `main`
+- Create a new github release with `main` as the target branch (this will create release notes based on changes) and create a new tag with the appropriate semver
+- Update the v1 tag by running:
+```
+git tag v1 --force
+git push --tags --force
+```

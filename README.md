@@ -14,7 +14,7 @@ on:
 jobs:
   publish_hex_context:
     runs-on: ubuntu-latest
-   steps:
+    steps:
     - name: Checkout
       uses: actions/checkout
     - name: Upload guide files
@@ -23,8 +23,8 @@ jobs:
         config_file: hex_context.config.json
         token: ${{ secrets.HEX_API_TOKEN }} # Set this in your repository settings
         # optional configuration
-        publish_guides: true # publish guides automatically
-        delete_untracked_guides: true # removes guides from hex that were also deleted in your repository
+        publish_guides: true # publish guides automatically (default true)
+        delete_untracked_guides: true # removes guides from hex that were also deleted in your repository (default true)
         hex_url: https://app.hex.tech # by default, is https://app.hex.tech - change if you have a single tenant hosted stack
 ```
 
