@@ -16,7 +16,7 @@ Scripts:
 To test this action e2e, you can reference this action in your own github action workflow, and point it to a specific commit hash. e.g.
 
 ```yml
-- uses: hex/github-context-toolkit@<commit_hash>
+- uses: hex/action-context-toolkit@<ref>
 ```
 
 ## Publishing a new version

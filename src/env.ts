@@ -15,7 +15,7 @@ export const getExpectedEnvVars = (): ExpectedEnvVars => {
     throw new Error("This action can only be run on a push event");
   }
 
-  // Expected format: hex/github-context-toolkit
+  // Expected format: hex/action-context-toolkit
   const ownerAndRepo = process.env["GITHUB_REPOSITORY"];
   const baseUrl = process.env["GITHUB_SERVER_URL"];
   const sha = process.env["GITHUB_SHA"];
