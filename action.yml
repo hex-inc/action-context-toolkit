@@ -28,7 +28,7 @@ inputs:
       }
     default: ./hex_context.config.json
   token:
-    description: A token with guide write access to Hex
+    description: A token with write access to Hex
     required: true
   hex_url:
     description: The URL of the Hex instance

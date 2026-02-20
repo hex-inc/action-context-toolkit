@@ -14,7 +14,7 @@ export type Inputs = {
 
 export const getInputs = async (): Promise<Inputs> => {
   const configFile = core.getInput("config_file");
-  const hexToken = core.getInput("hex_token");
+  const hexToken = core.getInput("token");
   const hexUrl = core.getInput("hex_url");
   const publishGuides = core.getBooleanInput("publish_guides");
   const deleteUntrackedGuides = core.getBooleanInput("delete_untracked_guides");
@@ -22,6 +22,11 @@ export const getInputs = async (): Promise<Inputs> => {
   if (!configFile.endsWith(".json")) {
     errors.push({
       message: `Expected a .json config file, got: ${configFile}`,
+    });
+  }
+  if (hexToken === "") {
+    errors.push({
+      message: `Token is required`,
     });
   }
 
