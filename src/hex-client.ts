@@ -74,8 +74,8 @@ export class HexClient {
     method: "GET" | "POST" | "PUT" | "DELETE",
     body?: unknown,
   ): Promise<Response<T>> {
-    const url = new URL(path, this.hexUrl);
-    core.debug(`Making ${method} request to ${url.toString()}`);
+    const url = new URL(path, this.hexUrl).toString();
+    core.debug(`Making ${method} request to ${url}`);
     const response = await fetch(url, {
       method,
       headers: {
@@ -88,7 +88,7 @@ export class HexClient {
     if (!response.ok) {
       const text = await response.text();
       core.error(
-        `Error making ${method} request to ${url.toString()}: ${text}`,
+        `Error making ${method} request to ${url.toString()} - ${text}`,
       );
       return {
         status: "error",
