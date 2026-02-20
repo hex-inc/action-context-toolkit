@@ -83,21 +83,28 @@ export const uploadAndMaybePublishGuides = async (
   core.info(
     `Guides: ${loadedGuides.map((guide) => (guide.hexFilePath === guide.path ? `${guide.path}` : `${guide.path} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
   );
+  const files = loadedGuides.map((guide) => ({
+    filePath: guide.path,
+    contents: guide.content,
+    externalContextSource: {
+      source: "github" as const,
+      base: parsedConfig.envVars.baseUrl,
+      owner: parsedConfig.envVars.owner,
+      repo: parsedConfig.envVars.repo,
+      commitHash: parsedConfig.envVars.sha,
+      branch: parsedConfig.envVars.branch,
+      path: guide.hexFilePath,
+    },
+  }));
+  if (core.isDebug()) {
+    core.debug(
+      `Files with configuration: ${JSON.stringify(files.map((file) => ({ filePath: file.filePath, externalContextSource: file.externalContextSource })))}`,
+    );
+  }
+
   // We may need to batch this call in the future
   const upsertedGuides = await parsedConfig.hexClient.upsertDraftGuides({
-    files: loadedGuides.map((guide) => ({
-      filePath: guide.path,
-      contents: guide.content,
-      externalContextSource: {
-        source: "github",
-        base: parsedConfig.envVars.baseUrl,
-        owner: parsedConfig.envVars.owner,
-        repo: parsedConfig.envVars.repo,
-        commitHash: parsedConfig.envVars.sha,
-        branch: parsedConfig.envVars.branch,
-        path: guide.hexFilePath,
-      },
-    })),
+    files,
   });
   core.info(
     `Successfully uploaded ${upsertedGuides.files.length} guides to Hex as draft guides`,

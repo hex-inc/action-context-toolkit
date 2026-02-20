@@ -80,20 +80,19 @@ export class HexClient {
       method,
       headers: {
         Authorization: `Bearer ${this.hexToken}`,
-        "Accept": "application/json",
         "Content-Type": "application/json",
       },
       body: body ? JSON.stringify(body) : undefined,
     });
 
     if (!response.ok) {
-      const errorBody = await response.json();
+      const text = await response.text();
       core.error(
-        `Error making ${method} request to ${url.toString()}: ${JSON.stringify(errorBody)}`,
+        `Error making ${method} request to ${url.toString()}: ${text}`,
       );
       return {
         status: "error",
-        message: JSON.stringify(errorBody),
+        message: text,
         statusCode: response.status,
       };
     }
