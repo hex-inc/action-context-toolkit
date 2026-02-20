@@ -1,3 +1,5 @@
+import * as core from "@actions/core";
+
 type Response<T> =
   | {
       status: "success";
@@ -73,6 +75,7 @@ export class HexClient {
     body?: unknown,
   ): Promise<Response<T>> {
     const url = new URL(path, this.hexUrl);
+    core.debug(`Making ${method} request to ${url.toString()}`);
     const response = await fetch(url, {
       method,
       headers: {
@@ -85,7 +88,7 @@ export class HexClient {
     if (!response.ok) {
       return {
         status: "error",
-        message: response.statusText,
+        message: await response.text(),
         statusCode: response.status,
       };
     }
