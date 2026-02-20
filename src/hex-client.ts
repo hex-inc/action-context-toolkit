@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 
-const LIMIT_PER_PAGE = 5;
+const LIMIT_PER_PAGE = 20;
 
 type Response<T> =
   | {
