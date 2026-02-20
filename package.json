@@ -1,11 +1,11 @@
 {
-  "name": "github-context-toolkit",
+  "name": "action-context-toolkit",
   "version": "1.0.0",
   "description": "Upload external context to Hex",
-  "homepage": "https://github.com/hex-inc/github-context-toolkit",
+  "homepage": "https://github.com/hex-inc/action-context-toolkit",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hex-inc/github-context-toolkit.git"
+    "url": "git+https://github.com/hex-inc/action-context-toolkit.git"
   },
   "scripts": {
     "test": "vitest",
