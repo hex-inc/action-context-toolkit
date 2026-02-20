@@ -39,9 +39,11 @@ export const getGuidesFromLocal = async (parsedConfig: {
 
   const loadedGuides: LoadedGuide[] = [];
   for await (const filePath of getFilesInDir(process.cwd())) {
+    core.debug(`Checking if file ${filePath} matches any patterns`);
     const content = await fs.readFile(filePath, "utf8");
     const maybeGuideFromPath = guideMap.get(filePath);
     if (maybeGuideFromPath) {
+      core.info(`Found guide at ${filePath}, using hex file path ${maybeGuideFromPath.hexFilePath}`);
       loadedGuides.push({
         path: filePath,
         hexFilePath: maybeGuideFromPath.hexFilePath,
@@ -55,6 +57,7 @@ export const getGuidesFromLocal = async (parsedConfig: {
           if (transform?.pickFileStem) {
             hexFilePath = path.basename(filePath);
           }
+          core.info(`Found guide at ${filePath}, using hex file path ${hexFilePath}`);
           loadedGuides.push({
             path: filePath,
             hexFilePath,
@@ -156,6 +159,10 @@ export const deleteUntrackedGuides = async (
 
 export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
   const loadedGuides = await getGuidesFromLocal(parsedConfig);
+  if (loadedGuides.length === 0) {
+    core.info("No guides found");
+    return;
+  }
   await uploadAndMaybePublishGuides(parsedConfig, loadedGuides);
 
   if (parsedConfig.inputs.deleteUntrackedGuides) {
