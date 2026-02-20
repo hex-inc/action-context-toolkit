@@ -107,7 +107,12 @@ export class HexClient {
     const response = await this.makeRequest<UpsertDraftGuideResponse>(
       "/api/v1/guides/draft",
       "PUT",
-      body,
+      {
+        files: [{
+          filePath: "test.md",
+          contents: "test",
+        }],
+      },
     );
     if (response.status === "error") {
       throw new Error(response.message);
