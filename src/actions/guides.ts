@@ -4,6 +4,7 @@ import path from "path";
 import { ParsedConfig } from "../types";
 import { getFilesInDir } from "../fileUtils";
 import picomatch from "picomatch";
+import { TransformSchema } from "../configSchema";
 
 type LoadedGuide = {
   path: string;
@@ -16,8 +17,7 @@ export const getGuidesFromLocal = async (parsedConfig: {
 }): Promise<LoadedGuide[]> => {
   const guideMap: Map<string, { path: string; hexFilePath: string }> =
     new Map();
-  const patternMap: Map<string, { transform?: { pickFileStem?: boolean } }> =
-    new Map();
+  const patternMap: Map<string, { transform?: TransformSchema }> = new Map();
   for (const guide of parsedConfig.inputs.guides) {
     if ("path" in guide) {
       const normalizedPath = path.normalize(guide.path);
@@ -56,7 +56,7 @@ export const getGuidesFromLocal = async (parsedConfig: {
         // This should match https://github.com/micromatch/picomatch, and have a rust equivalent https://docs.rs/satch/latest/satch/
         if (picomatch.isMatch(filePath, pattern)) {
           let hexFilePath = filePath;
-          if (transform?.pickFileStem) {
+          if (transform?.stripFolders) {
             hexFilePath = path.basename(filePath);
           }
           core.info(

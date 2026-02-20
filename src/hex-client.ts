@@ -103,11 +103,11 @@ export class HexClient {
     };
   }
 
-  async upsertDraftGuides(guides: UpsertDraftGuideRequest) {
+  async upsertDraftGuides(body: UpsertDraftGuideRequest) {
     const response = await this.makeRequest<UpsertDraftGuideResponse>(
       "/api/v1/guides/draft",
       "PUT",
-      guides,
+      body,
     );
     if (response.status === "error") {
       throw new Error(response.message);

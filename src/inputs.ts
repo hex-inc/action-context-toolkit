@@ -1,12 +1,11 @@
 import * as core from "@actions/core";
 import fs from "fs/promises";
-import { z } from "zod";
-import { guideSchema, configSchema } from "./configSchema";
+import { GuideSchema, ConfigSchema } from "./configSchema";
 
 const errors: { message: string; details?: unknown }[] = [];
 
 export type Inputs = {
-  guides: z.infer<typeof guideSchema>[];
+  guides: GuideSchema[];
   hexToken: string;
   hexUrl: string;
   publishGuides: boolean;
@@ -35,7 +34,7 @@ export const getInputs = async (): Promise<Inputs> => {
     });
   }
 
-  let guides: z.infer<typeof guideSchema>[] = [];
+  let guides: GuideSchema[] = [];
   let unparsedConfigFile: string | null = null;
   if (!configFile.endsWith(".json")) {
     errors.push({
@@ -56,7 +55,7 @@ export const getInputs = async (): Promise<Inputs> => {
   try {
     if (unparsedConfigFile) {
       const parsedJson = JSON.parse(unparsedConfigFile);
-      const parsedConfig = configSchema.parse(parsedJson);
+      const parsedConfig = ConfigSchema.parse(parsedJson);
 
       guides = parsedConfig.guides || [];
     }

@@ -46,7 +46,7 @@ Which references a `hex_context.config.json` file
     {
       "pattern": "**/*.md", // all .md files in your repo
       "transform": {
-        "useFileStem": true // will rewrite the path to only include the file name (ignoring the folder path), e.g. folder1/folder2/guide.md -> guide.md
+        "stripFolders": true // will rewrite the path to only include the file name (ignoring the folder path), e.g. folder1/folder2/guide.md -> guide.md
       }
     }
   ]
