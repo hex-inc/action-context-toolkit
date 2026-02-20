@@ -71,7 +71,10 @@ describe("getGuidesFromLocal", () => {
       inputs: {
         guides: [
           { pattern: "guides/*.md" },
-          { pattern: "another_folder/**/*.md", transform: { pickFileStem: true } },
+          {
+            pattern: "another_folder/**/*.md",
+            transform: { pickFileStem: true },
+          },
         ],
       },
     });
