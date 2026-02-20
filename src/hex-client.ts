@@ -1,5 +1,7 @@
 import * as core from "@actions/core";
 
+const LIMIT_PER_PAGE = 5;
+
 type Response<T> =
   | {
       status: "success";
@@ -21,10 +23,14 @@ type ListDraftGuidesRequest = {
 };
 
 type ListDraftGuidesResponse = {
-  files: {
+  values: {
     id: string;
     filePath: string;
   }[];
+  pagination: {
+    after: string | null;
+    before: string | null;
+  };
 };
 
 type UpsertDraftGuideRequest = {
@@ -127,15 +133,35 @@ export class HexClient {
     return response.data;
   }
 
-  async getDraftGuides(request: ListDraftGuidesRequest) {
+  async getDraftGuides(request: ListDraftGuidesRequest, after?: string | null) {
+    let url = `/api/v1/guides/draft/list?externalSource=${encodeURIComponent(JSON.stringify(request.externalSource))}&limit=${LIMIT_PER_PAGE}`;
+    if (after != null) {
+      url += `&after=${encodeURIComponent(after)}`;
+    }
     const response = await this.makeRequest<ListDraftGuidesResponse>(
-      `/api/v1/guides/draft/list?externalSource=${encodeURIComponent(JSON.stringify(request.externalSource))}`,
+      url,
       "GET",
     );
     if (response.status === "error") {
       throw new Error(response.message);
     }
     return response.data;
+  }
+
+  async getAllDraftGuides(
+    request: ListDraftGuidesRequest,
+  ): Promise<ListDraftGuidesResponse["values"]> {
+    const allGuides: ListDraftGuidesResponse["values"] = [];
+    let after: string | null = null;
+    while (true) {
+      const page = await this.getDraftGuides(request, after);
+      allGuides.push(...page.values);
+      after = page.pagination.after;
+      if (after == null) {
+        break;
+      }
+    }
+    return allGuides;
   }
 
   async deleteGuide(guideId: string) {

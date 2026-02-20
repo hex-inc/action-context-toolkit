@@ -131,7 +131,7 @@ export const deleteUntrackedGuides = async (
   parsedConfig: ParsedConfig,
   loadedGuides: LoadedGuide[],
 ) => {
-  const draftGuides = await parsedConfig.hexClient.getDraftGuides({
+  const draftGuides = await parsedConfig.hexClient.getAllDraftGuides({
     externalSource: {
       source: "github",
       base: parsedConfig.envVars.baseUrl,
@@ -144,7 +144,7 @@ export const deleteUntrackedGuides = async (
     loadedGuides.map((guide) => guide.hexFilePath),
   );
 
-  const untrackedGuides = draftGuides.files.filter(
+  const untrackedGuides = draftGuides.filter(
     (guide) => !loadedGuideHexFilePaths.has(guide.filePath),
   );
   if (untrackedGuides.length > 0) {
