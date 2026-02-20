@@ -7,9 +7,11 @@ export const guideSchema = z.union([
   }),
   z.object({
     pattern: z.string(),
-    transform: z.object({
-      pickFileStem: z.boolean().optional(),
-    }).optional()
+    transform: z
+      .object({
+        pickFileStem: z.boolean().optional(),
+      })
+      .optional(),
   }),
 ]);
 
