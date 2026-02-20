@@ -34406,9 +34406,13 @@ var HexClient = class {
       body: body ? JSON.stringify(body) : void 0
     });
     if (!response.ok) {
+      const text = await response.text();
+      error(
+        `Error making ${method} request to ${url2.toString()}: ${text}`
+      );
       return {
         status: "error",
-        message: await response.text(),
+        message: text,
         statusCode: response.status
       };
     }
