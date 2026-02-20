@@ -13,8 +13,14 @@ async function run() {
     envVars,
     hexClient,
   });
-
-  core.info("Finished running hex context toolkit");
 }
 
-void run();
+void run()
+  .then(() => {
+    core.info("Finished running hex context toolkit");
+  })
+  .catch((e) => {
+    core.error(e);
+    core.setFailed(e.message);
+    process.exit(1);
+  });

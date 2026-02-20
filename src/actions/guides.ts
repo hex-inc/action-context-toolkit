@@ -4,20 +4,19 @@ import path from "path";
 import { ParsedConfig } from "../types";
 import { getFilesInDir } from "../fileUtils";
 import picomatch from "picomatch";
+import { TransformSchema } from "../configSchema";
 
-type LoadedGuide = {
-  path: string;
+type GuideWithPointer = {
+  originalFilePath: string;
   hexFilePath: string;
-  content: string;
 };
 
 export const getGuidesFromLocal = async (parsedConfig: {
   inputs: Pick<ParsedConfig["inputs"], "guides">;
-}): Promise<LoadedGuide[]> => {
+}): Promise<GuideWithPointer[]> => {
   const guideMap: Map<string, { path: string; hexFilePath: string }> =
     new Map();
-  const patternMap: Map<string, { transform?: { pickFileStem?: boolean } }> =
-    new Map();
+  const patternMap: Map<string, { transform?: TransformSchema }> = new Map();
   for (const guide of parsedConfig.inputs.guides) {
     if ("path" in guide) {
       const normalizedPath = path.normalize(guide.path);
@@ -37,83 +36,100 @@ export const getGuidesFromLocal = async (parsedConfig: {
     `Looking for guides: ${guidesPathText ? `paths: ${guidesPathText}` : ""} ${guidesPatternText ? `patterns: ${guidesPatternText}` : ""}`,
   );
 
-  const loadedGuides: LoadedGuide[] = [];
+  const matchingGuides: GuideWithPointer[] = [];
   for await (const filePath of getFilesInDir(process.cwd())) {
-    const content = await fs.readFile(filePath, "utf8");
+    core.debug(`Checking if file ${filePath} matches any patterns`);
     const maybeGuideFromPath = guideMap.get(filePath);
     if (maybeGuideFromPath) {
-      loadedGuides.push({
-        path: filePath,
+      core.info(
+        `Found guide at ${filePath}, using hex file path ${maybeGuideFromPath.hexFilePath}`,
+      );
+      matchingGuides.push({
+        originalFilePath: filePath,
         hexFilePath: maybeGuideFromPath.hexFilePath,
-        content,
       });
     } else {
       for (const [pattern, { transform }] of patternMap.entries()) {
         // This should match https://github.com/micromatch/picomatch, and have a rust equivalent https://docs.rs/satch/latest/satch/
         if (picomatch.isMatch(filePath, pattern)) {
           let hexFilePath = filePath;
-          if (transform?.pickFileStem) {
+          if (transform?.stripFolders) {
             hexFilePath = path.basename(filePath);
           }
-          loadedGuides.push({
-            path: filePath,
+          core.info(
+            `Found guide at ${filePath}, using hex file path ${hexFilePath}`,
+          );
+          matchingGuides.push({
+            originalFilePath: filePath,
             hexFilePath,
-            content,
           });
           break;
         }
       }
     }
   }
-  return loadedGuides;
+  return matchingGuides;
 };
 
-export const uploadAndMaybePublishGuides = async (
+export const uploadGuides = async (
   parsedConfig: ParsedConfig,
-  loadedGuides: LoadedGuide[],
-) => {
-  core.info(`Uploading ${loadedGuides.length} guides to Hex as draft guides`);
+  matchingGuides: GuideWithPointer[],
+): Promise<{ guideFileIds: string[] }> => {
+  core.info(`Uploading ${matchingGuides.length} guides to Hex as draft guides`);
   core.info(
-    `Guides: ${loadedGuides.map((guide) => (guide.hexFilePath === guide.path ? `${guide.path}` : `${guide.path} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
+    `Guides: ${matchingGuides.map((guide) => (guide.hexFilePath === guide.originalFilePath ? `${guide.originalFilePath}` : `${guide.originalFilePath} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
   );
-  // We may need to batch this call in the future
-  const upsertedGuides = await parsedConfig.hexClient.upsertDraftGuides({
-    files: loadedGuides.map((guide) => ({
-      filePath: guide.path,
-      contents: guide.content,
-      externalContextSource: {
-        source: "github",
+  const files = await Promise.all(
+    matchingGuides.map(async (guide) => ({
+      filePath: guide.hexFilePath,
+      contents: await fs.readFile(guide.originalFilePath, "utf8"),
+      externalSource: {
+        source: "github" as const,
         base: parsedConfig.envVars.baseUrl,
         owner: parsedConfig.envVars.owner,
         repo: parsedConfig.envVars.repo,
         commitHash: parsedConfig.envVars.sha,
         branch: parsedConfig.envVars.branch,
-        path: guide.hexFilePath,
+        path: guide.originalFilePath,
       },
     })),
+  );
+  if (core.isDebug()) {
+    core.debug(
+      `Files with configuration: ${JSON.stringify(files.map((file) => ({ filePath: file.filePath, externalSource: file.externalSource })))}`,
+    );
+  }
+
+  // We may need to batch this call in the future
+  const upsertedGuides = await parsedConfig.hexClient.upsertDraftGuides({
+    files,
   });
   core.info(
     `Successfully uploaded ${upsertedGuides.files.length} guides to Hex as draft guides`,
   );
 
-  if (parsedConfig.inputs.publishGuides) {
-    core.info("Publishing guides");
-    await parsedConfig.hexClient.publishDraftGuides({
-      orgGuideFileIds: upsertedGuides.files.map((guide) => guide.id),
-    });
-    core.info("Successfully published guides");
-  } else {
-    core.info(
-      "Not publishing guides automatically. Set publish_guides to true to publish guides",
-    );
-  }
+  return {
+    guideFileIds: upsertedGuides.files.map((guide) => guide.id),
+  };
+};
+
+export const publishGuides = async (
+  parsedConfig: ParsedConfig,
+  guideFileIds: string[],
+) => {
+  core.info("Publishing guides");
+
+  await parsedConfig.hexClient.publishDraftGuides({
+    orgGuideFileIds: guideFileIds,
+  });
+  core.info("Successfully published guides");
 };
 
 export const deleteUntrackedGuides = async (
   parsedConfig: ParsedConfig,
-  loadedGuides: LoadedGuide[],
+  loadedGuides: GuideWithPointer[],
 ) => {
-  const draftGuides = await parsedConfig.hexClient.getDraftGuides({
+  const draftGuides = await parsedConfig.hexClient.getAllDraftGuides({
     externalSource: {
       source: "github",
       base: parsedConfig.envVars.baseUrl,
@@ -126,7 +142,7 @@ export const deleteUntrackedGuides = async (
     loadedGuides.map((guide) => guide.hexFilePath),
   );
 
-  const untrackedGuides = draftGuides.files.filter(
+  const untrackedGuides = draftGuides.filter(
     (guide) => !loadedGuideHexFilePaths.has(guide.filePath),
   );
   if (untrackedGuides.length > 0) {
@@ -156,9 +172,25 @@ export const deleteUntrackedGuides = async (
 
 export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
   const loadedGuides = await getGuidesFromLocal(parsedConfig);
-  await uploadAndMaybePublishGuides(parsedConfig, loadedGuides);
+  if (loadedGuides.length === 0) {
+    core.info("No guides found");
+    return;
+  }
+  const { guideFileIds } = await uploadGuides(parsedConfig, loadedGuides);
+  if (parsedConfig.inputs.publishGuides) {
+    await publishGuides(parsedConfig, guideFileIds);
+  } else {
+    core.info(
+      "Not publishing guides automatically. Set publish_guides to true to publish guides",
+    );
+  }
 
   if (parsedConfig.inputs.deleteUntrackedGuides) {
+    core.info("Checking if there are any untracked guides");
     await deleteUntrackedGuides(parsedConfig, loadedGuides);
+  } else {
+    core.info(
+      "Not deleting untracked guides. Set delete_untracked_guides to true to delete untracked guides",
+    );
   }
 };

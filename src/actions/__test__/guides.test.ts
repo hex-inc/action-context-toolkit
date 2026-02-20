@@ -1,10 +1,7 @@
 import { describe, test, expect, vi, afterEach } from "vitest";
 import * as fileUtils from "../../fileUtils";
 import { getGuidesFromLocal } from "../guides";
-import fs from "fs/promises";
-
 vi.mock("../../fileUtils");
-vi.mock("fs/promises");
 
 const mockGetFilesInDir = (files: string[]) => {
   vi.mocked(fileUtils.getFilesInDir).mockImplementation(
@@ -14,10 +11,6 @@ const mockGetFilesInDir = (files: string[]) => {
       }
     },
   );
-
-  vi.mocked(fs.readFile).mockImplementation(async (path: any): Promise<any> => {
-    return `Content of ${path}`;
-  });
 };
 
 describe("getGuidesFromLocal", () => {
@@ -45,14 +38,12 @@ describe("getGuidesFromLocal", () => {
     expect(guides).toMatchInlineSnapshot(`
       [
         {
-          "content": "Content of guides/guide.md",
           "hexFilePath": "guides/guide.md",
-          "path": "guides/guide.md",
+          "originalFilePath": "guides/guide.md",
         },
         {
-          "content": "Content of another/abc.md",
           "hexFilePath": "custom_path.md",
-          "path": "another/abc.md",
+          "originalFilePath": "another/abc.md",
         },
       ]
     `);
@@ -73,7 +64,7 @@ describe("getGuidesFromLocal", () => {
           { pattern: "guides/*.md" },
           {
             pattern: "another_folder/**/*.md",
-            transform: { pickFileStem: true },
+            transform: { stripFolders: true },
           },
         ],
       },
@@ -82,29 +73,24 @@ describe("getGuidesFromLocal", () => {
     expect(guides).toMatchInlineSnapshot(`
       [
         {
-          "content": "Content of guides/users.md",
           "hexFilePath": "guides/users.md",
-          "path": "guides/users.md",
+          "originalFilePath": "guides/users.md",
         },
         {
-          "content": "Content of guides/arr.md",
           "hexFilePath": "guides/arr.md",
-          "path": "guides/arr.md",
+          "originalFilePath": "guides/arr.md",
         },
         {
-          "content": "Content of another_folder/abc.md",
           "hexFilePath": "abc.md",
-          "path": "another_folder/abc.md",
+          "originalFilePath": "another_folder/abc.md",
         },
         {
-          "content": "Content of another_folder/def/guide.md",
           "hexFilePath": "guide.md",
-          "path": "another_folder/def/guide.md",
+          "originalFilePath": "another_folder/def/guide.md",
         },
         {
-          "content": "Content of another_folder/def/something.md",
           "hexFilePath": "something.md",
-          "path": "another_folder/def/something.md",
+          "originalFilePath": "another_folder/def/something.md",
         },
       ]
     `);

@@ -1,12 +1,11 @@
 import * as core from "@actions/core";
 import fs from "fs/promises";
-import { z } from "zod";
-import { guideSchema, configSchema } from "./configSchema";
+import { GuideSchema, ConfigSchema } from "./configSchema";
 
 const errors: { message: string; details?: unknown }[] = [];
 
 export type Inputs = {
-  guides: z.infer<typeof guideSchema>[];
+  guides: GuideSchema[];
   hexToken: string;
   hexUrl: string;
   publishGuides: boolean;
@@ -15,7 +14,7 @@ export type Inputs = {
 
 export const getInputs = async (): Promise<Inputs> => {
   const configFile = core.getInput("config_file");
-  const hexToken = core.getInput("hex_token");
+  const hexToken = core.getInput("token");
   const hexUrl = core.getInput("hex_url");
   const publishGuides = core.getBooleanInput("publish_guides");
   const deleteUntrackedGuides = core.getBooleanInput("delete_untracked_guides");
@@ -23,6 +22,11 @@ export const getInputs = async (): Promise<Inputs> => {
   if (!configFile.endsWith(".json")) {
     errors.push({
       message: `Expected a .json config file, got: ${configFile}`,
+    });
+  }
+  if (hexToken === "") {
+    errors.push({
+      message: `Token is required`,
     });
   }
 
@@ -35,7 +39,7 @@ export const getInputs = async (): Promise<Inputs> => {
     });
   }
 
-  let guides: z.infer<typeof guideSchema>[] = [];
+  let guides: GuideSchema[] = [];
   let unparsedConfigFile: string | null = null;
   if (!configFile.endsWith(".json")) {
     errors.push({
@@ -56,7 +60,7 @@ export const getInputs = async (): Promise<Inputs> => {
   try {
     if (unparsedConfigFile) {
       const parsedJson = JSON.parse(unparsedConfigFile);
-      const parsedConfig = configSchema.parse(parsedJson);
+      const parsedConfig = ConfigSchema.parse(parsedJson);
 
       guides = parsedConfig.guides || [];
     }
