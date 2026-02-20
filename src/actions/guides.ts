@@ -6,15 +6,14 @@ import { getFilesInDir } from "../fileUtils";
 import picomatch from "picomatch";
 import { TransformSchema } from "../configSchema";
 
-type LoadedGuide = {
-  path: string;
+type GuideWithPointer = {
+  originalFilePath: string;
   hexFilePath: string;
-  content: string;
 };
 
 export const getGuidesFromLocal = async (parsedConfig: {
   inputs: Pick<ParsedConfig["inputs"], "guides">;
-}): Promise<LoadedGuide[]> => {
+}): Promise<GuideWithPointer[]> => {
   const guideMap: Map<string, { path: string; hexFilePath: string }> =
     new Map();
   const patternMap: Map<string, { transform?: TransformSchema }> = new Map();
@@ -37,19 +36,17 @@ export const getGuidesFromLocal = async (parsedConfig: {
     `Looking for guides: ${guidesPathText ? `paths: ${guidesPathText}` : ""} ${guidesPatternText ? `patterns: ${guidesPatternText}` : ""}`,
   );
 
-  const loadedGuides: LoadedGuide[] = [];
+  const matchingGuides: GuideWithPointer[] = [];
   for await (const filePath of getFilesInDir(process.cwd())) {
     core.debug(`Checking if file ${filePath} matches any patterns`);
-    const content = await fs.readFile(filePath, "utf8");
     const maybeGuideFromPath = guideMap.get(filePath);
     if (maybeGuideFromPath) {
       core.info(
         `Found guide at ${filePath}, using hex file path ${maybeGuideFromPath.hexFilePath}`,
       );
-      loadedGuides.push({
-        path: filePath,
+      matchingGuides.push({
+        originalFilePath: filePath,
         hexFilePath: maybeGuideFromPath.hexFilePath,
-        content,
       });
     } else {
       for (const [pattern, { transform }] of patternMap.entries()) {
@@ -62,40 +59,41 @@ export const getGuidesFromLocal = async (parsedConfig: {
           core.info(
             `Found guide at ${filePath}, using hex file path ${hexFilePath}`,
           );
-          loadedGuides.push({
-            path: filePath,
+          matchingGuides.push({
+            originalFilePath: filePath,
             hexFilePath,
-            content,
           });
           break;
         }
       }
     }
   }
-  return loadedGuides;
+  return matchingGuides;
 };
 
 export const uploadGuides = async (
   parsedConfig: ParsedConfig,
-  loadedGuides: LoadedGuide[],
+  matchingGuides: GuideWithPointer[],
 ): Promise<{ guideFileIds: string[] }> => {
-  core.info(`Uploading ${loadedGuides.length} guides to Hex as draft guides`);
+  core.info(`Uploading ${matchingGuides.length} guides to Hex as draft guides`);
   core.info(
-    `Guides: ${loadedGuides.map((guide) => (guide.hexFilePath === guide.path ? `${guide.path}` : `${guide.path} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
+    `Guides: ${matchingGuides.map((guide) => (guide.hexFilePath === guide.originalFilePath ? `${guide.originalFilePath}` : `${guide.originalFilePath} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
   );
-  const files = loadedGuides.map((guide) => ({
-    filePath: guide.hexFilePath,
-    contents: guide.content,
-    externalSource: {
-      source: "github" as const,
-      base: parsedConfig.envVars.baseUrl,
-      owner: parsedConfig.envVars.owner,
-      repo: parsedConfig.envVars.repo,
-      commitHash: parsedConfig.envVars.sha,
-      branch: parsedConfig.envVars.branch,
-      path: guide.path,
-    },
-  }));
+  const files = await Promise.all(
+    matchingGuides.map(async (guide) => ({
+      filePath: guide.hexFilePath,
+      contents: await fs.readFile(guide.originalFilePath, "utf8"),
+      externalSource: {
+        source: "github" as const,
+        base: parsedConfig.envVars.baseUrl,
+        owner: parsedConfig.envVars.owner,
+        repo: parsedConfig.envVars.repo,
+        commitHash: parsedConfig.envVars.sha,
+        branch: parsedConfig.envVars.branch,
+        path: guide.originalFilePath,
+      },
+    })),
+  );
   if (core.isDebug()) {
     core.debug(
       `Files with configuration: ${JSON.stringify(files.map((file) => ({ filePath: file.filePath, externalSource: file.externalSource })))}`,
@@ -129,7 +127,7 @@ export const publishGuides = async (
 
 export const deleteUntrackedGuides = async (
   parsedConfig: ParsedConfig,
-  loadedGuides: LoadedGuide[],
+  loadedGuides: GuideWithPointer[],
 ) => {
   const draftGuides = await parsedConfig.hexClient.getAllDraftGuides({
     externalSource: {
