@@ -86,7 +86,7 @@ export const uploadAndMaybePublishGuides = async (
   const files = loadedGuides.map((guide) => ({
     filePath: guide.path,
     contents: guide.content,
-    externalContextSource: {
+    externalSource: {
       source: "github" as const,
       base: parsedConfig.envVars.baseUrl,
       owner: parsedConfig.envVars.owner,
@@ -98,7 +98,7 @@ export const uploadAndMaybePublishGuides = async (
   }));
   if (core.isDebug()) {
     core.debug(
-      `Files with configuration: ${JSON.stringify(files.map((file) => ({ filePath: file.filePath, externalContextSource: file.externalContextSource })))}`,
+      `Files with configuration: ${JSON.stringify(files.map((file) => ({ filePath: file.filePath, externalSource: file.externalSource })))}`,
     );
   }
 

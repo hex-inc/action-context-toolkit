@@ -32,7 +32,7 @@ type UpsertDraftGuideRequest = {
   files: {
     filePath: string;
     contents: string;
-    externalContextSource: {
+    externalSource: {
       source: "github";
       base: string;
       owner: string;
