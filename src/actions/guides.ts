@@ -43,7 +43,9 @@ export const getGuidesFromLocal = async (parsedConfig: {
     const content = await fs.readFile(filePath, "utf8");
     const maybeGuideFromPath = guideMap.get(filePath);
     if (maybeGuideFromPath) {
-      core.info(`Found guide at ${filePath}, using hex file path ${maybeGuideFromPath.hexFilePath}`);
+      core.info(
+        `Found guide at ${filePath}, using hex file path ${maybeGuideFromPath.hexFilePath}`,
+      );
       loadedGuides.push({
         path: filePath,
         hexFilePath: maybeGuideFromPath.hexFilePath,
@@ -57,7 +59,9 @@ export const getGuidesFromLocal = async (parsedConfig: {
           if (transform?.pickFileStem) {
             hexFilePath = path.basename(filePath);
           }
-          core.info(`Found guide at ${filePath}, using hex file path ${hexFilePath}`);
+          core.info(
+            `Found guide at ${filePath}, using hex file path ${hexFilePath}`,
+          );
           loadedGuides.push({
             path: filePath,
             hexFilePath,
