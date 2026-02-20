@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
    steps:
     - name: Checkout
-      uses: actions/checkout
+      uses: actions/checkout@v6
     - name: Upload guide files
       uses: hex/github-context-toolkit@v1
       with:
