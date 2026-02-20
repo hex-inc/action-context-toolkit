@@ -12,7 +12,7 @@
     "lint": "prettier --check \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\"",
-    "build": "esbuild src/main.ts --bundle --outfile=dist/index.js --platform=node"
+    "build": "esbuild src/main.ts --bundle --minify --outfile=dist/index.js --platform=node"
   },
   "author": "Hex Technologies Inc.",
   "license": "MIT",

@@ -86,13 +86,13 @@ export class HexClient {
     });
 
     if (!response.ok) {
-      const text = await response.text();
+      const errorBody = await response.json();
       core.error(
-        `Error making ${method} request to ${url.toString()}: ${text}`,
+        `Error making ${method} request to ${url.toString()}: ${JSON.stringify(errorBody)}`,
       );
       return {
         status: "error",
-        message: text,
+        message: JSON.stringify(errorBody),
         statusCode: response.status,
       };
     }
