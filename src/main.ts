@@ -20,7 +20,6 @@ void run()
     core.info("Finished running hex context toolkit");
   })
   .catch((e) => {
-    core.error(e);
-    core.setFailed(e.message);
+    core.setFailed(e);
     process.exit(1);
   });
