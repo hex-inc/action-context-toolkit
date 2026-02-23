@@ -18,7 +18,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
     - name: Upload guide files
-      uses: hex/action-context-toolkit@v1
+      uses: hex-inc/action-context-toolkit@v1
       with:
         config_file: hex_context.config.json
         token: ${{ secrets.HEX_API_TOKEN }} # Set this in your repository settings
