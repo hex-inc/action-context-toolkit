@@ -26,7 +26,7 @@ export const getInputs = async (): Promise<Inputs> => {
   }
   if (hexToken === "") {
     errors.push({
-      message: `Token is required`,
+      message: `A token is required. Please check the 'token' input, and ensure that the secret is properly set in your repository settings`,
     });
   }
 
@@ -46,15 +46,28 @@ export const getInputs = async (): Promise<Inputs> => {
       message: `Expected a .json config file, got: ${configFile}`,
     });
   } else {
-    unparsedConfigFile = await fs
-      .readFile(configFile, "utf8")
-      .catch((error) => {
-        errors.push({
-          message: `Error reading config file at ${configFile}`,
-          details: error,
-        });
-        return null;
+    const canAccess = await fs
+      .access(configFile, fs.constants.R_OK)
+      .then(() => true)
+      .catch(() => {
+        return false;
       });
+
+    if (!canAccess) {
+      errors.push({
+        message: `Could not find hex context config file. Looked for config file at: ${configFile}. Please check the 'config_file' input and ensure a file exists at that location`,
+      });
+    } else {
+      unparsedConfigFile = await fs
+        .readFile(configFile, "utf8")
+        .catch((error) => {
+          errors.push({
+            message: `Error reading config file at ${configFile}`,
+            details: error,
+          });
+          return null;
+        });
+    }
   }
 
   try {
@@ -63,16 +76,17 @@ export const getInputs = async (): Promise<Inputs> => {
       const parsedConfig = ConfigSchema.parse(parsedJson);
 
       guides = parsedConfig.guides || [];
+      if (guides.length === 0) {
+        errors.push({
+          message: `No guides found in config file: ${configFile}`,
+        });
+      }
     }
   } catch (error) {
     errors.push({
       message: `Error parsing config file: ${configFile}`,
       details: error,
     });
-  }
-
-  if (guides.length === 0) {
-    errors.push({ message: `No guides found in config file: ${configFile}` });
   }
 
   if (errors.length > 0) {

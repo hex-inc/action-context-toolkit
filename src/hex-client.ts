@@ -93,9 +93,15 @@ export class HexClient {
 
     if (!response.ok) {
       const text = await response.text();
-      core.error(
-        `Error making ${method} request to ${url.toString()} - ${text}`,
-      );
+      let maybeParsedJsonText = null;
+
+      try {
+        maybeParsedJsonText = JSON.stringify(JSON.parse(text), null, 2);
+      } catch (e) {
+        maybeParsedJsonText = text;
+      }
+      core.error(`Error making ${method} request to ${url.toString()}`);
+      core.error(maybeParsedJsonText);
       return {
         status: "error",
         message: text,

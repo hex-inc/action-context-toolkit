@@ -21,7 +21,7 @@ jobs:
       uses: hex-inc/action-context-toolkit@v1
       with:
         config_file: hex_context.config.json
-        token: ${{ secrets.HEX_API_TOKEN }} # Set this in your repository settings
+        token: ${{ secrets.HEX_API_TOKEN }} # Create a workspace token with the Guides write scope and set this in your repository settings
         # optional configuration
         publish_guides: true # publish guides automatically (default true)
         delete_untracked_guides: true # removes guides from hex that were also deleted in your repository (default true)
