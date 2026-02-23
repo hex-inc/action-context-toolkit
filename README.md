@@ -9,7 +9,7 @@ name: Publish hex context
 
 on:
   push:
-    branches: [ 'master' ]
+    branches: [ 'main' ]
 
 jobs:
   publish_hex_context:
