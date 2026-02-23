@@ -128,7 +128,7 @@ export const publishGuides = async (
 export const deleteUntrackedGuides = async (
   parsedConfig: ParsedConfig,
   loadedGuides: GuideWithPointer[],
-) => {
+): Promise<{ deletedGuideFileIds: string[] }> => {
   const draftGuides = await parsedConfig.hexClient.getAllDraftGuides({
     externalSource: {
       source: "github",
@@ -151,9 +151,11 @@ export const deleteUntrackedGuides = async (
       `Removing the following guides from Hex: ${untrackedGuides.map((guide) => guide.filePath).join(", ")}`,
     );
     const results = await Promise.allSettled(
-      untrackedGuides.map((guide) =>
-        parsedConfig.hexClient.deleteGuide(guide.id),
-      ),
+      untrackedGuides.map(async (guide) => {
+        await parsedConfig.hexClient.deleteGuide(guide.id);
+
+        return guide.id;
+      }),
     );
     if (results.some((result) => result.status === "rejected")) {
       core.error(
@@ -165,8 +167,14 @@ export const deleteUntrackedGuides = async (
     } else {
       core.info("Successfully deleted untracked guides");
     }
+    return {
+      deletedGuideFileIds: results
+        .map((result) => (result.status === "fulfilled" ? result.value : null))
+        .filter((id) => id !== null),
+    };
   } else {
     core.info("No untracked guides found");
+    return { deletedGuideFileIds: [] };
   }
 };
 
@@ -177,20 +185,26 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
     return;
   }
   const { guideFileIds } = await uploadGuides(parsedConfig, loadedGuides);
-  if (parsedConfig.inputs.publishGuides) {
-    await publishGuides(parsedConfig, guideFileIds);
-  } else {
-    core.info(
-      "Not publishing guides automatically. Set publish_guides to true to publish guides",
-    );
-  }
+  let deletedGuideFileIds: string[] = [];
 
   if (parsedConfig.inputs.deleteUntrackedGuides) {
     core.info("Checking if there are any untracked guides");
-    await deleteUntrackedGuides(parsedConfig, loadedGuides);
+    const result = await deleteUntrackedGuides(parsedConfig, loadedGuides);
+    deletedGuideFileIds = result.deletedGuideFileIds;
   } else {
     core.info(
       "Not deleting untracked guides. Set delete_untracked_guides to true to delete untracked guides",
+    );
+  }
+
+  if (parsedConfig.inputs.publishGuides) {
+    await publishGuides(parsedConfig, [
+      ...guideFileIds,
+      ...deletedGuideFileIds,
+    ]);
+  } else {
+    core.info(
+      "Not publishing guides automatically. Set publish_guides to true to publish guide changes",
     );
   }
 };

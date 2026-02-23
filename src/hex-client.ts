@@ -75,11 +75,11 @@ export class HexClient {
     private readonly hexToken: string,
   ) {}
 
-  private async makeRequest<T extends unknown>(
+  private async makeRequestBase(
     path: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
     body?: unknown,
-  ): Promise<Response<T>> {
+  ): Promise<Response<Awaited<ReturnType<typeof fetch>>>> {
     const url = new URL(path, this.hexUrl).toString();
     core.debug(`Making ${method} request to ${url}`);
     const response = await fetch(url, {
@@ -111,10 +111,40 @@ export class HexClient {
 
     return {
       status: "success",
-      data: (await response.json()) as T,
+      data: response,
     };
   }
 
+  private async makeRequest<T extends unknown>(
+    path: string,
+    method: "GET" | "POST" | "PUT" | "DELETE",
+    body?: unknown,
+  ): Promise<Response<T>> {
+    const baseResponse = await this.makeRequestBase(path, method, body);
+    if (baseResponse.status === "error") {
+      return baseResponse;
+    } else {
+      return {
+        status: "success",
+        data: (await baseResponse.data.json()) as T,
+      };
+    }
+  }
+  private async makeRequestWithoutResponse(
+    path: string,
+    method: "GET" | "POST" | "PUT" | "DELETE",
+    body?: unknown,
+  ): Promise<Response<string>> {
+    const baseResponse = await this.makeRequestBase(path, method, body);
+    if (baseResponse.status === "error") {
+      return baseResponse;
+    } else {
+      return {
+        status: "success",
+        data: await baseResponse.data.text(),
+      };
+    }
+  }
   async upsertDraftGuides(body: UpsertDraftGuideRequest) {
     const response = await this.makeRequest<UpsertDraftGuideResponse>(
       "/api/v1/guides/draft",
@@ -171,7 +201,7 @@ export class HexClient {
   }
 
   async deleteGuide(guideId: string) {
-    const response = await this.makeRequest<void>(
+    const response = await this.makeRequestWithoutResponse(
       `/api/v1/guides/draft/${guideId}`,
       "DELETE",
     );
