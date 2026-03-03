@@ -10,6 +10,7 @@ name: Publish hex context
 on:
   push:
     branches: [ 'main' ]
+  pull_request:
 
 jobs:
   publish_hex_context:

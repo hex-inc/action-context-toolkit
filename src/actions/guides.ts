@@ -179,6 +179,11 @@ export const deleteUntrackedGuides = async (
 };
 
 export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
+  if (parsedConfig.envVars.type === "pull_request") {
+    core.info("Guide validation is not supported for pull requests yet, no-op");
+    return;
+  }
+
   const loadedGuides = await getGuidesFromLocal(parsedConfig);
   if (loadedGuides.length === 0) {
     core.info("No guides found");

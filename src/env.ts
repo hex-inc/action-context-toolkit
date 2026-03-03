@@ -4,22 +4,29 @@ export type ExpectedEnvVars = {
   repo: string;
   sha: string;
   branch: string;
+  type: "push" | "pull_request";
 };
 
 // This should all be set by the Github Action environment
 export const getExpectedEnvVars = (): ExpectedEnvVars => {
   const isPushEvent = process.env["GITHUB_EVENT_NAME"] === "push";
+  const isPullRequestEvent =
+    process.env["GITHUB_EVENT_NAME"] === "pull_request";
 
   // In the future we will support other event types, but different event types map environments differently
-  if (!isPushEvent) {
-    throw new Error("This action can only be run on a push event");
+  if (!isPushEvent && !isPullRequestEvent) {
+    throw new Error(
+      "This action can only be run on a push or pull request event",
+    );
   }
 
   // Expected format: hex/action-context-toolkit
   const ownerAndRepo = process.env["GITHUB_REPOSITORY"];
   const baseUrl = process.env["GITHUB_SERVER_URL"];
   const sha = process.env["GITHUB_SHA"];
-  const branch = process.env["GITHUB_REF_NAME"]; // This is the branch name, when run in a pull request
+  const branch = isPullRequestEvent
+    ? process.env["GITHUB_HEAD_REF"]
+    : process.env["GITHUB_REF_NAME"];
 
   if (!ownerAndRepo) {
     throw new Error("GITHUB_REPOSITORY is not set");
@@ -47,5 +54,6 @@ export const getExpectedEnvVars = (): ExpectedEnvVars => {
     repo,
     sha,
     branch,
+    type: isPushEvent ? "push" : "pull_request",
   };
 };
