@@ -13,7 +13,6 @@ export const getExpectedEnvVars = (): ExpectedEnvVars => {
   const isPullRequestEvent =
     process.env["GITHUB_EVENT_NAME"] === "pull_request";
 
-  // In the future we will support other event types, but different event types map environments differently
   if (!isPushEvent && !isPullRequestEvent) {
     throw new Error(
       "This action can only be run on a push or pull request event",
