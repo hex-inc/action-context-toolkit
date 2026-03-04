@@ -198,7 +198,7 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
   const guidesResult = await getGuidesFromLocal(parsedConfig);
 
   if (guidesResult.missingGuides.length > 0) {
-    const missingGuidesMessage = `The following guides were defined in config but not found: ${guidesResult.missingGuides.join(", ")}`;
+    const missingGuidesMessage = `The following guides were defined in config but were not found: ${guidesResult.missingGuides.join(", ")}`;
     if (parsedConfig.envVars.type === "pull_request") {
       core.setFailed(missingGuidesMessage);
       return;
