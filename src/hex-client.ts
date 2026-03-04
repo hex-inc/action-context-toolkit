@@ -101,7 +101,17 @@ export class HexClient {
         maybeParsedJsonText = text;
       }
       core.error(`Error making ${method} request to ${url.toString()}`);
-      core.error(maybeParsedJsonText);
+      if (response.status === 401) {
+        const isUsingBaseHexUrl = this.hexUrl === "https://app.hex.tech";
+        const additionalMessage = isUsingBaseHexUrl
+          ? ", and if you are using a single tenant / EU / HIPAA instance, ensure the hex_url is set correctly (e.g. https://eu.hex.tech)"
+          : ".";
+        core.error(
+          `Unauthorized - please check your token and ensure it has the Guides write scope${additionalMessage}`,
+        );
+      } else {
+        core.error(maybeParsedJsonText);
+      }
       return {
         status: "error",
         message: text,

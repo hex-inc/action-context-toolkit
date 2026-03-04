@@ -11,9 +11,14 @@ type GuideWithPointer = {
   hexFilePath: string;
 };
 
+type GuideFromLocalResult = {
+  matchingGuides: GuideWithPointer[];
+  missingGuides: string[];
+};
+
 export const getGuidesFromLocal = async (parsedConfig: {
   inputs: Pick<ParsedConfig["inputs"], "guides">;
-}): Promise<GuideWithPointer[]> => {
+}): Promise<GuideFromLocalResult> => {
   const guideMap: Map<string, { path: string; hexFilePath: string }> =
     new Map();
   const patternMap: Map<string, { transform?: TransformSchema }> = new Map();
@@ -68,7 +73,18 @@ export const getGuidesFromLocal = async (parsedConfig: {
       }
     }
   }
-  return matchingGuides;
+
+  const foundGuides = new Set(
+    matchingGuides.map((guide) => guide.originalFilePath),
+  );
+  const missingGuides = [...guideMap.keys()].filter(
+    (guide) => !foundGuides.has(guide),
+  );
+
+  return {
+    matchingGuides,
+    missingGuides,
+  };
 };
 
 export const uploadGuides = async (
@@ -184,17 +200,28 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
     return;
   }
 
-  const loadedGuides = await getGuidesFromLocal(parsedConfig);
-  if (loadedGuides.length === 0) {
+  const guidesResult = await getGuidesFromLocal(parsedConfig);
+  if (guidesResult.matchingGuides.length === 0) {
     core.info("No guides found");
+    if (guidesResult.missingGuides.length > 0) {
+      core.setFailed(
+        `The following guides were defined in config but not found: ${guidesResult.missingGuides.join(", ")}`,
+      );
+    }
     return;
   }
-  const { guideFileIds } = await uploadGuides(parsedConfig, loadedGuides);
+  const { guideFileIds } = await uploadGuides(
+    parsedConfig,
+    guidesResult.matchingGuides,
+  );
   let deletedGuideFileIds: string[] = [];
 
   if (parsedConfig.inputs.deleteUntrackedGuides) {
     core.info("Checking if there are any untracked guides");
-    const result = await deleteUntrackedGuides(parsedConfig, loadedGuides);
+    const result = await deleteUntrackedGuides(
+      parsedConfig,
+      guidesResult.matchingGuides,
+    );
     deletedGuideFileIds = result.deletedGuideFileIds;
   } else {
     core.info(
