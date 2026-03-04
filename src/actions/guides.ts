@@ -11,9 +11,14 @@ type GuideWithPointer = {
   hexFilePath: string;
 };
 
+type GuideFromLocalResult = {
+  matchingGuides: GuideWithPointer[];
+  missingGuides: string[];
+};
+
 export const getGuidesFromLocal = async (parsedConfig: {
   inputs: Pick<ParsedConfig["inputs"], "guides">;
-}): Promise<GuideWithPointer[]> => {
+}): Promise<GuideFromLocalResult> => {
   const guideMap: Map<string, { path: string; hexFilePath: string }> =
     new Map();
   const patternMap: Map<string, { transform?: TransformSchema }> = new Map();
@@ -68,7 +73,18 @@ export const getGuidesFromLocal = async (parsedConfig: {
       }
     }
   }
-  return matchingGuides;
+
+  const foundGuides = new Set(
+    matchingGuides.map((guide) => guide.originalFilePath),
+  );
+  const missingGuides = [...guideMap.keys()].filter(
+    (guide) => !foundGuides.has(guide),
+  );
+
+  return {
+    matchingGuides,
+    missingGuides,
+  };
 };
 
 export const uploadGuides = async (
@@ -179,22 +195,48 @@ export const deleteUntrackedGuides = async (
 };
 
 export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
-  if (parsedConfig.envVars.type === "pull_request") {
-    core.info("Guide validation is not supported for pull requests yet, no-op");
-    return;
+  const guidesResult = await getGuidesFromLocal(parsedConfig);
+
+  if (guidesResult.missingGuides.length > 0) {
+    const missingGuidesMessage = `The following guides were defined in config but were not found: ${guidesResult.missingGuides.join(", ")}`;
+    if (parsedConfig.envVars.type === "pull_request") {
+      core.setFailed(missingGuidesMessage);
+      return;
+    } else {
+      core.warning(missingGuidesMessage);
+      if (guidesResult.matchingGuides.length > 0) {
+        core.info(
+          "Continuing with guide upload, but some guides may be missing",
+        );
+      }
+    }
   }
 
-  const loadedGuides = await getGuidesFromLocal(parsedConfig);
-  if (loadedGuides.length === 0) {
+  if (guidesResult.matchingGuides.length === 0) {
     core.info("No guides found");
     return;
   }
-  const { guideFileIds } = await uploadGuides(parsedConfig, loadedGuides);
+
+  if (parsedConfig.envVars.type === "pull_request") {
+    core.info(
+      `Found ${guidesResult.matchingGuides.length} guides to upload to Hex as draft guides`,
+    );
+    core.info("Guide dry-run is not supported for pull requests yet, no-op");
+    return;
+  }
+
+  const { guideFileIds } = await uploadGuides(
+    parsedConfig,
+    guidesResult.matchingGuides,
+  );
   let deletedGuideFileIds: string[] = [];
 
   if (parsedConfig.inputs.deleteUntrackedGuides) {
     core.info("Checking if there are any untracked guides");
-    const result = await deleteUntrackedGuides(parsedConfig, loadedGuides);
+    const result = await deleteUntrackedGuides(
+      parsedConfig,
+      guidesResult.matchingGuides,
+    );
     deletedGuideFileIds = result.deletedGuideFileIds;
   } else {
     core.info(

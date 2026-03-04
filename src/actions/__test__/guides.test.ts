@@ -34,8 +34,8 @@ describe("getGuidesFromLocal", () => {
         ],
       },
     });
-    expect(guides.length).toBe(2);
-    expect(guides).toMatchInlineSnapshot(`
+    expect(guides.matchingGuides.length).toBe(2);
+    expect(guides.matchingGuides).toMatchInlineSnapshot(`
       [
         {
           "hexFilePath": "guides/guide.md",
@@ -69,8 +69,8 @@ describe("getGuidesFromLocal", () => {
         ],
       },
     });
-    expect(guides.length).toBe(5);
-    expect(guides).toMatchInlineSnapshot(`
+    expect(guides.matchingGuides.length).toBe(5);
+    expect(guides.matchingGuides).toMatchInlineSnapshot(`
       [
         {
           "hexFilePath": "guides/users.md",
@@ -92,6 +92,23 @@ describe("getGuidesFromLocal", () => {
           "hexFilePath": "something.md",
           "originalFilePath": "another_folder/def/something.md",
         },
+      ]
+    `);
+  });
+
+  test("should fail if specific paths to guides are not found", async () => {
+    mockGetFilesInDir(["guides/guide.md", "another/abc.md", "other.js"]);
+    const guides = await getGuidesFromLocal({
+      inputs: {
+        guides: [
+          { path: "guide-that-is-missing.md", hexFilePath: "guides/guide.md" },
+        ],
+      },
+    });
+    expect(guides.missingGuides.length).toBe(1);
+    expect(guides.missingGuides).toMatchInlineSnapshot(`
+      [
+        "guide-that-is-missing.md",
       ]
     `);
   });
