@@ -5,11 +5,11 @@ Upload external context to Hex. Supports uploading guide files
 Usage:
 
 ```yml
-name: Publish hex context
+name: Publish Hex context
 
 on:
   push:
-    branches: [ 'main' ]
+    branches: [ 'main', 'master' ]
   pull_request:
 
 jobs:
@@ -26,10 +26,15 @@ jobs:
         # optional configuration
         publish_guides: true # publish guides automatically (default true)
         delete_untracked_guides: true # removes guides from hex that were also deleted in your repository (default true)
-        hex_url: https://app.hex.tech # by default, is https://app.hex.tech - change if you have a single tenant hosted stack
+        hex_url: https://app.hex.tech # by default, this is https://app.hex.tech - change if you have a single tenant hosted stack
 ```
 
-Which references a `hex_context.config.json` file
+Which references a `hex_context.config.json` file. You can define paths to your guides in the following ways:
+
+- `path` - the path to a guide file
+  - You can also specify `hexFilePath` if you want the path that shows up in Hex to be different to how your guides are structured in your repository
+- `pattern` - matches a pattern - e.g. (`guides/*.md` - matches .md files in a guides folder or `guides/**/*.md` - matches .md files in the guides folder, including sub-directories)
+  - You can also optionally specify a `transform` with `{ "stripFolders": true }` which will rewrite the path when uploaded to Hex to only include the file name (ignoring the folder path), e.g. folder1/folder2/guide.md -> guide.md
 
 ```json
 {
@@ -39,17 +44,16 @@ Which references a `hex_context.config.json` file
     },
     {
       "path": "path_i_want_to_change.md",
-      // If you want the path that shows up in Hex to be different to how your guides are structured in your repository
       "hexFilePath": "path/that/will/show/up/in/hex.md"
     },
     {
-      "pattern": "guides/*.md", // matches .md files in a guides folder
+      "pattern": "guides/*.md",
       "transform": {
-        "stripFolders": true // will rewrite the path to only include the file name (ignoring the folder path), e.g. folder1/folder2/guide.md -> guide.md
+        "stripFolders": true
       }
     },
     {
-      "pattern": "guides/**/*.md" // matches .md files in the guides folder, including sub directories
+      "pattern": "guides/**/*.md"
     }
   ]
 }
