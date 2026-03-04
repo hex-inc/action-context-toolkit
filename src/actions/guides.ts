@@ -195,11 +195,6 @@ export const deleteUntrackedGuides = async (
 };
 
 export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
-  if (parsedConfig.envVars.type === "pull_request") {
-    core.info("Guide validation is not supported for pull requests yet, no-op");
-    return;
-  }
-
   const guidesResult = await getGuidesFromLocal(parsedConfig);
   if (guidesResult.matchingGuides.length === 0) {
     core.info("No guides found");
@@ -210,6 +205,12 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
     }
     return;
   }
+
+  if (parsedConfig.envVars.type === "pull_request") {
+    core.info("Guide dry-run is not supported for pull requests yet, no-op");
+    return;
+  }
+
   const { guideFileIds } = await uploadGuides(
     parsedConfig,
     guidesResult.matchingGuides,
