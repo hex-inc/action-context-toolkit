@@ -218,6 +218,9 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
   }
 
   if (parsedConfig.envVars.type === "pull_request") {
+    core.info(
+      `Found ${guidesResult.matchingGuides.length} guides to upload to Hex as draft guides`,
+    );
     core.info("Guide dry-run is not supported for pull requests yet, no-op");
     return;
   }
