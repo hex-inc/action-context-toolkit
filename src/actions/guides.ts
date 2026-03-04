@@ -196,21 +196,14 @@ export const deleteUntrackedGuides = async (
 
 export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
   const guidesResult = await getGuidesFromLocal(parsedConfig);
-  if (guidesResult.matchingGuides.length === 0) {
-    core.info("No guides found");
-    if (guidesResult.missingGuides.length > 0) {
-      core.setFailed(
-        `The following guides were defined in config but not found: ${guidesResult.missingGuides.join(", ")}`,
-      );
-    }
-    return;
-  } else if (guidesResult.missingGuides.length > 0) {
-    core.warning(
+  if (guidesResult.missingGuides.length > 0) {
+    core.setFailed(
       `The following guides were defined in config but not found: ${guidesResult.missingGuides.join(", ")}`,
     );
-    core.info(
-      "Continuing with guide validation, but some guides may be missing",
-    );
+    return;
+  } else if (guidesResult.matchingGuides.length === 0) {
+    core.info("No guides found");
+    return;
   }
 
   if (parsedConfig.envVars.type === "pull_request") {
