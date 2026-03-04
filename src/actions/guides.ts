@@ -204,6 +204,13 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
       );
     }
     return;
+  } else if (guidesResult.missingGuides.length > 0) {
+    core.warning(
+      `The following guides were defined in config but not found: ${guidesResult.missingGuides.join(", ")}`,
+    );
+    core.info(
+      "Continuing with guide validation, but some guides may be missing",
+    );
   }
 
   if (parsedConfig.envVars.type === "pull_request") {
