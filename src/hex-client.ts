@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import { chunk } from "./utils";
 
 const LIMIT_PER_PAGE = 20;
-const DEFAULT_BATCH_SIZE = 20;
+const DEFAULT_BATCH_SIZE = 2;
 
 type Response<T> =
   | {
@@ -178,6 +178,7 @@ export class HexClient {
     const finalResponse: UpsertDraftGuideResponse = { files: [] };
 
     for (const fileBatch of fileBatches) {
+      core.info(`Upserting batch of ${fileBatch.length} guides`);
       const batchBody = {
         ...body,
         files: fileBatch,
