@@ -116,10 +116,10 @@ export const uploadGuides = async (
     );
   }
 
-  // We may need to batch this call in the future
-  const upsertedGuides = await parsedConfig.hexClient.upsertDraftGuides({
-    files,
-  });
+  const upsertedGuides =
+    await parsedConfig.hexClient.upsertDraftGuidesInBatches({
+      files,
+    });
   core.info(
     `Successfully uploaded ${upsertedGuides.files.length} guides to Hex as draft guides`,
   );

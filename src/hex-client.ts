@@ -1,6 +1,8 @@
 import * as core from "@actions/core";
+import { chunk } from "./utils";
 
 const LIMIT_PER_PAGE = 20;
+const DEFAULT_BATCH_SIZE = 20;
 
 type Response<T> =
   | {
@@ -165,6 +167,33 @@ export class HexClient {
       throw new Error(response.message);
     }
     return response.data;
+  }
+
+  async upsertDraftGuidesInBatches(
+    body: UpsertDraftGuideRequest,
+    options: { batchSize?: number } = {},
+  ) {
+    const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
+    const fileBatches = chunk(body.files, batchSize);
+    const finalResponse: UpsertDraftGuideResponse = { files: [] };
+
+    for (const fileBatch of fileBatches) {
+      const batchBody = {
+        ...body,
+        files: fileBatch,
+      };
+      const response = await this.makeRequest<UpsertDraftGuideResponse>(
+        "/api/v1/guides/draft",
+        "PUT",
+        batchBody,
+      );
+      if (response.status === "error") {
+        throw new Error(response.message);
+      }
+      finalResponse.files.push(...response.data.files);
+    }
+
+    return finalResponse;
   }
 
   async publishDraftGuides(guides: PublishDraftGuideRequest) {
