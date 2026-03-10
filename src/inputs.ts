@@ -10,6 +10,7 @@ export type Inputs = {
   hexUrl: string;
   publishGuides: boolean;
   deleteUntrackedGuides: boolean;
+  commentOnPr: boolean;
 };
 
 export const getInputs = async (): Promise<Inputs> => {
@@ -18,6 +19,7 @@ export const getInputs = async (): Promise<Inputs> => {
   const hexUrl = core.getInput("hex_url");
   const publishGuides = core.getBooleanInput("publish_guides");
   const deleteUntrackedGuides = core.getBooleanInput("delete_untracked_guides");
+  const commentOnPr = core.getBooleanInput("comment_on_pr");
 
   if (!configFile.endsWith(".json")) {
     errors.push({
@@ -99,5 +101,6 @@ export const getInputs = async (): Promise<Inputs> => {
     guides,
     publishGuides,
     deleteUntrackedGuides,
+    commentOnPr,
   };
 };

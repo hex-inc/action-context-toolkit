@@ -194,7 +194,9 @@ export const deleteUntrackedGuides = async (
   }
 };
 
-export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
+export const runGuidesAction = async (
+  parsedConfig: ParsedConfig,
+): Promise<void> => {
   const guidesResult = await getGuidesFromLocal(parsedConfig);
 
   if (guidesResult.missingGuides.length > 0) {

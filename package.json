@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@actions/core": "^3.0.0",
+    "@actions/github": "^9.0.0",
     "picomatch": "^4.0.3",
     "zod": "^4.3.6"
   }
