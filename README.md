@@ -1,8 +1,9 @@
 ![banner](GuideSyncBanner.png)
 
 # Hex Action context toolkit
-Manage your context documents in GitHub, then push to Hex for usage by the Hex Agent. Learn more about guides and programmatic context management in our [documentation](https://learn.hex.tech/docs/agent-management/context-management/guides#programmatically-upload-guides-in-ci).
+An action to upload external sources of context to [Hex](https://hex.tech) for use in the Hex Agent for [self-serve analytics](https://learn.hex.tech/docs/explore-data/threads). 
 
+This action currently supports uploading guide files, unstructured context that helps agents interpret questions and respond appropriately. Read [the docs](https://learn.hex.tech/docs/agent-management/context-management/guides#when-to-use-the-guide-library) on how to best utilize guide files in your Hex workspace. You can learn more about the types of context you can add to Hex in our agent management [docs](https://learn.hex.tech/docs/agent-management/context-management/overview).
 
 
 ## Features
