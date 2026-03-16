@@ -1,4 +1,4 @@
-![banner](GuideSyncBanner.png)
+![banner](docs/GuideSyncBanner.png)
 
 # Hex Action context toolkit
 An action to upload external sources of context to [Hex](https://hex.tech) for use in the Hex Agent for [self-serve analytics](https://learn.hex.tech/docs/explore-data/threads). 
