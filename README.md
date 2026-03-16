@@ -1,8 +1,15 @@
-# Action context toolkit
+![banner](GuideSyncBanner.png)
 
-Upload external context to Hex. Supports uploading guide files
+# Hex Action context toolkit
+Manage your context documents in GitHub, then push to Hex for usage by the Hex Agent. Learn more about guides and programmatic context management in our [documentation](https://learn.hex.tech/docs/agent-management/context-management/guides#programmatically-upload-guides-in-ci).
 
-Usage:
+
+
+## Features
+- Selectively upload documents in a larger repo
+- Automatically publish and delete guides in Hex
+
+## Usage
 
 ```yml
 name: Publish Hex context
