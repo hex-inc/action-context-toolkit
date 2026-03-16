@@ -1,8 +1,16 @@
-# Action context toolkit
+![banner](docs/GuideSyncBanner.png)
 
-Upload external context to Hex. Supports uploading guide files
+# Hex Action context toolkit
+An action to upload external sources of context to [Hex](https://hex.tech) for use in the Hex Agent for [self-serve analytics](https://learn.hex.tech/docs/explore-data/threads). 
 
-Usage:
+This action currently supports uploading guide files, unstructured context that helps agents interpret questions and respond appropriately. Read [the docs](https://learn.hex.tech/docs/agent-management/context-management/guides#when-to-use-the-guide-library) on how to best utilize guide files in your Hex workspace. You can learn more about the types of context you can add to Hex in our agent management [docs](https://learn.hex.tech/docs/agent-management/context-management/overview).
+
+
+## Features
+- Selectively upload documents in a larger repo
+- Automatically publish and delete guides in Hex
+
+## Usage
 
 ```yml
 name: Publish Hex context
