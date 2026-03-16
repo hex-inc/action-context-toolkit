@@ -7,3 +7,6 @@ export type ParsedConfig = {
   envVars: ExpectedEnvVars;
   hexClient: HexClient;
 };
+
+// TODO
+export type GuidesActionResult = {};

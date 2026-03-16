@@ -1,11 +1,22 @@
+import * as core from "@actions/core";
+
 export type ExpectedEnvVars = {
   baseUrl: string;
   owner: string;
   repo: string;
   sha: string;
   branch: string;
-  type: "push" | "pull_request";
-};
+  token: string | undefined;
+} & (
+  | {
+      type: "push";
+      pullRequestNumber?: undefined;
+    }
+  | {
+      type: "pull_request";
+      pullRequestNumber: number | undefined;
+    }
+);
 
 // This should all be set by the Github Action environment
 export const getExpectedEnvVars = (): ExpectedEnvVars => {
@@ -26,6 +37,7 @@ export const getExpectedEnvVars = (): ExpectedEnvVars => {
   const branch = isPullRequestEvent
     ? process.env["GITHUB_HEAD_REF"]
     : process.env["GITHUB_REF_NAME"];
+  const token = process.env["GITHUB_TOKEN"];
 
   if (!ownerAndRepo) {
     throw new Error("GITHUB_REPOSITORY is not set");
@@ -46,13 +58,39 @@ export const getExpectedEnvVars = (): ExpectedEnvVars => {
       "GITHUB_REPOSITORY is not in the expected format (expected: owner/repo)",
     );
   }
+  if (isPullRequestEvent) {
+    let pullRequestNumber: number | undefined = undefined;
+    try {
+      const rawEvent = process.env["GITHUB_EVENT"];
+      if (rawEvent) {
+        const event = JSON.parse(rawEvent);
+        pullRequestNumber = event.pull_request.number;
+      }
+    } catch (e) {
+      core.warning(
+        `Could not extract pull request number from github environment`,
+      );
+    }
 
-  return {
-    baseUrl,
-    owner,
-    repo,
-    sha,
-    branch,
-    type: isPushEvent ? "push" : "pull_request",
-  };
+    return {
+      baseUrl,
+      token,
+      owner,
+      repo,
+      sha,
+      branch,
+      type: "pull_request",
+      pullRequestNumber,
+    };
+  } else {
+    return {
+      baseUrl,
+      token,
+      owner,
+      repo,
+      sha,
+      branch,
+      type: "push",
+    };
+  }
 };
