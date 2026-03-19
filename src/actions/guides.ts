@@ -135,6 +135,8 @@ const uploadGuidesViaChangeset = async (
     });
   }
 
+  core.info(`Successfully staged ${matchingGuides.length} guides to Hex`);
+
   return {
     contextVersionId,
     orgId,
@@ -237,5 +239,6 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
     await parsedConfig.hexClient.publishChangeset(contextVersionId, {
       updateLatestVersion: parsedConfig.inputs.publishGuides,
     });
+    core.info(`Successfully applied changes to Hex`);
   }
 };
