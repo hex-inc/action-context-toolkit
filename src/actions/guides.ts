@@ -5,6 +5,8 @@ import { ParsedConfig } from "../types";
 import { getFilesInDir } from "../fileUtils";
 import picomatch from "picomatch";
 import { TransformSchema } from "../configSchema";
+import { chunk } from "../utils";
+import { getPreviewLink } from "../hex-client";
 
 type GuideWithPointer = {
   originalFilePath: string;
@@ -87,110 +89,82 @@ export const getGuidesFromLocal = async (parsedConfig: {
   };
 };
 
-export const uploadGuides = async (
+const uploadGuidesViaChangeset = async (
   parsedConfig: ParsedConfig,
   matchingGuides: GuideWithPointer[],
-): Promise<{ guideFileIds: string[] }> => {
-  core.info(`Uploading ${matchingGuides.length} guides to Hex as draft guides`);
-  core.info(
-    `Guides: ${matchingGuides.map((guide) => (guide.hexFilePath === guide.originalFilePath ? `${guide.originalFilePath}` : `${guide.originalFilePath} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
-  );
-  const files = await Promise.all(
-    matchingGuides.map(async (guide) => ({
-      filePath: guide.hexFilePath,
-      contents: await fs.readFile(guide.originalFilePath, "utf8"),
+) => {
+  const { contextVersionId, orgId } =
+    await parsedConfig.hexClient.createChangeset({
       externalSource: {
-        source: "github" as const,
+        source: "github",
         base: parsedConfig.envVars.baseUrl,
         owner: parsedConfig.envVars.owner,
         repo: parsedConfig.envVars.repo,
         commitHash: parsedConfig.envVars.sha,
         branch: parsedConfig.envVars.branch,
-        path: guide.originalFilePath,
       },
-    })),
-  );
-  if (core.isDebug()) {
-    core.debug(
-      `Files with configuration: ${JSON.stringify(files.map((file) => ({ filePath: file.filePath, externalSource: file.externalSource })))}`,
-    );
-  }
-
-  const upsertedGuides =
-    await parsedConfig.hexClient.upsertDraftGuidesInBatches({
-      files,
     });
   core.info(
-    `Successfully uploaded ${upsertedGuides.files.length} guides to Hex as draft guides`,
+    `Guides: ${matchingGuides.map((guide) => (guide.hexFilePath === guide.originalFilePath ? `${guide.originalFilePath}` : `${guide.originalFilePath} (hex path: ${guide.hexFilePath})`)).join(", ")}`,
   );
 
+  const chunkedFiles = chunk(matchingGuides, 20);
+
+  for (const chunk of chunkedFiles) {
+    const files = await Promise.all(
+      chunk.map(async (guide) => ({
+        filePath: guide.hexFilePath,
+        contents: await fs.readFile(guide.originalFilePath, "utf8"),
+        externalSource: {
+          source: "github" as const,
+          base: parsedConfig.envVars.baseUrl,
+          owner: parsedConfig.envVars.owner,
+          repo: parsedConfig.envVars.repo,
+          commitHash: parsedConfig.envVars.sha,
+          branch: parsedConfig.envVars.branch,
+          path: guide.originalFilePath,
+        },
+      })),
+    );
+
+    await parsedConfig.hexClient.applyOperationToChangeset(contextVersionId, {
+      operation: {
+        type: "upsert_guide",
+        files,
+      },
+    });
+  }
+
   return {
-    guideFileIds: upsertedGuides.files.map((guide) => guide.id),
+    contextVersionId,
+    orgId,
   };
 };
 
-export const publishGuides = async (
+const addPruneGuidesToChangeset = async (
   parsedConfig: ParsedConfig,
-  guideFileIds: string[],
+  contextVersionId: string,
+  matchingGuides: GuideWithPointer[],
 ) => {
-  core.info("Publishing guides");
-
-  await parsedConfig.hexClient.publishDraftGuides({
-    orgGuideFileIds: guideFileIds,
-  });
-  core.info("Successfully published guides");
-};
-
-export const deleteUntrackedGuides = async (
-  parsedConfig: ParsedConfig,
-  loadedGuides: GuideWithPointer[],
-): Promise<{ deletedGuideFileIds: string[] }> => {
-  const draftGuides = await parsedConfig.hexClient.getAllDraftGuides({
-    externalSource: {
-      source: "github",
-      base: parsedConfig.envVars.baseUrl,
-      owner: parsedConfig.envVars.owner,
-      repo: parsedConfig.envVars.repo,
+  const removedGuides = await parsedConfig.hexClient.applyOperationToChangeset(
+    contextVersionId,
+    {
+      operation: {
+        type: "prune_guides",
+        guideFilePaths: matchingGuides.map((guide) => guide.originalFilePath),
+        externalSource: {
+          source: "github",
+          base: parsedConfig.envVars.baseUrl,
+          owner: parsedConfig.envVars.owner,
+          repo: parsedConfig.envVars.repo,
+        },
+      },
     },
-  });
-
-  const loadedGuideHexFilePaths = new Set(
-    loadedGuides.map((guide) => guide.hexFilePath),
   );
-
-  const untrackedGuides = draftGuides.filter(
-    (guide) => !loadedGuideHexFilePaths.has(guide.filePath),
-  );
-  if (untrackedGuides.length > 0) {
-    core.info(`Deleting ${untrackedGuides.length} untracked guides from Hex`);
-    core.info(
-      `Removing the following guides from Hex: ${untrackedGuides.map((guide) => guide.filePath).join(", ")}`,
-    );
-    const results = await Promise.allSettled(
-      untrackedGuides.map(async (guide) => {
-        await parsedConfig.hexClient.deleteGuide(guide.id);
-
-        return guide.id;
-      }),
-    );
-    if (results.some((result) => result.status === "rejected")) {
-      core.error(
-        `Failed to delete the following guides: ${results
-          .filter((result) => result.status === "rejected")
-          .map((result) => result.reason)
-          .join(", ")}`,
-      );
-    } else {
-      core.info("Successfully deleted untracked guides");
-    }
-    return {
-      deletedGuideFileIds: results
-        .map((result) => (result.status === "fulfilled" ? result.value : null))
-        .filter((id) => id !== null),
-    };
+  if (removedGuides.result.type === "prune_guides") {
+    return removedGuides.result.removedGuideFilePaths;
   } else {
-    core.info("No untracked guides found");
-    return { deletedGuideFileIds: [] };
+    return [];
   }
 };
 
@@ -219,39 +193,49 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
 
   if (parsedConfig.envVars.type === "pull_request") {
     core.info(
-      `Found ${guidesResult.matchingGuides.length} guides to upload to Hex as draft guides`,
+      `Found ${guidesResult.matchingGuides.length} guides to upload to Hex`,
     );
-    core.info("Guide dry-run is not supported for pull requests yet, no-op");
-    return;
+  } else {
+    core.info(`Uploading ${guidesResult.matchingGuides.length} guides to Hex`);
   }
-
-  const { guideFileIds } = await uploadGuides(
+  const { contextVersionId, orgId } = await uploadGuidesViaChangeset(
     parsedConfig,
     guidesResult.matchingGuides,
   );
-  let deletedGuideFileIds: string[] = [];
 
   if (parsedConfig.inputs.deleteUntrackedGuides) {
     core.info("Checking if there are any untracked guides");
-    const result = await deleteUntrackedGuides(
+    const removedGuides = await addPruneGuidesToChangeset(
       parsedConfig,
+      contextVersionId,
       guidesResult.matchingGuides,
     );
-    deletedGuideFileIds = result.deletedGuideFileIds;
+    core.info(`Deleting ${removedGuides.length} untracked guides from Hex`);
+    core.info(
+      `Removing the following guides from Hex: ${removedGuides.map((guide) => guide).join(", ")}`,
+    );
   } else {
     core.info(
       "Not deleting untracked guides. Set delete_untracked_guides to true to delete untracked guides",
     );
   }
 
-  if (parsedConfig.inputs.publishGuides) {
-    await publishGuides(parsedConfig, [
-      ...guideFileIds,
-      ...deletedGuideFileIds,
-    ]);
-  } else {
+  if (parsedConfig.envVars.type === "pull_request") {
+    // This is a preview, we don't need to publish
+    // TODO include a github comment here
     core.info(
-      "Not publishing guides automatically. Set publish_guides to true to publish guide changes",
+      `Preview link: ${getPreviewLink(parsedConfig.envVars.baseUrl, orgId, contextVersionId)}`,
     );
+    return;
+  } else {
+    if (!parsedConfig.inputs.publishGuides) {
+      core.info(
+        "Not publishing guides automatically. Set publish_guides to true to publish guide changes",
+      );
+    }
+
+    await parsedConfig.hexClient.publishChangeset(contextVersionId, {
+      updateLatestVersion: parsedConfig.inputs.publishGuides,
+    });
   }
 };
