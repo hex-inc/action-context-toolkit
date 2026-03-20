@@ -358,7 +358,7 @@ export class HexClient {
     request: PublishChangesetRequest,
   ) {
     const response = await this.makeRequest<PublishChangesetResponse>(
-      `/api/v1/context/version/${contextVersionId}`,
+      `/api/v1/context/version/${contextVersionId}/publish`,
       "POST",
       request,
     );
