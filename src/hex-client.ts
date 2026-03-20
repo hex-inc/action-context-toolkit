@@ -4,6 +4,32 @@ import { chunk } from "./utils";
 const LIMIT_PER_PAGE = 20;
 const DEFAULT_BATCH_SIZE = 20;
 
+type ExternalSourceLocatorInput = {
+  source: "github";
+  base: string;
+  owner: string;
+  repo: string;
+};
+
+type ExternalSourceLocatorWithMetadataInput = {
+  source: "github";
+  base: string;
+  owner: string;
+  repo: string;
+  commitHash: string;
+  branch: string;
+};
+
+type ExternalContextSourceInput = {
+  source: "github";
+  base: string;
+  owner: string;
+  repo: string;
+  commitHash: string;
+  branch: string;
+  path: string;
+};
+
 type Response<T> =
   | {
       status: "success";
@@ -16,12 +42,7 @@ type Response<T> =
     };
 
 type ListDraftGuidesRequest = {
-  externalSource: {
-    source: "github";
-    base: string;
-    owner: string;
-    repo: string;
-  };
+  externalSource: ExternalSourceLocatorInput;
 };
 
 type ListDraftGuidesResponse = {
@@ -40,15 +61,7 @@ type UpsertDraftGuideRequest = {
   files: {
     filePath: string;
     contents: string;
-    externalSource: {
-      source: "github";
-      base: string;
-      owner: string;
-      repo: string;
-      commitHash: string;
-      branch: string;
-      path: string;
-    };
+    externalSource: ExternalContextSourceInput;
   }[];
 };
 
@@ -71,11 +84,74 @@ type PublishDraftGuideResponse = {
   }[];
 };
 
+type CreateChangesetRequest = {
+  externalSource: ExternalSourceLocatorWithMetadataInput;
+};
+
+type CreateChangesetResponse = {
+  contextVersionId: string;
+  orgId: string;
+};
+
+type ApplyOperationToChangesetRequest = {
+  operation:
+    | {
+        type: "upsert_guide";
+        files: {
+          filePath: string;
+          contents: string;
+          externalSource: ExternalContextSourceInput;
+        }[];
+        forceWrite?: boolean;
+      }
+    | {
+        type: "prune_guides";
+        guideFilePaths: string[];
+        externalSource: ExternalSourceLocatorInput;
+      };
+};
+
+type ApplyOperationToChangesetResponse = {
+  contextVersionId: string;
+  result:
+    | {
+        type: "upsert_guide";
+        files: {
+          id: string;
+          filePath: string;
+        }[];
+        warnings: {
+          filePath: string;
+          message: string;
+        }[];
+      }
+    | {
+        type: "prune_guides";
+        removedGuideFilePaths: string[];
+      };
+};
+
+type PublishChangesetRequest = {
+  updateLatestVersion: boolean;
+};
+
+type PublishChangesetResponse = {
+  contextVersionId: string;
+};
+
 export class HexClient {
   constructor(
     private readonly hexUrl: string,
     private readonly hexToken: string,
   ) {}
+
+  getPreviewLink(orgId: string, contextVersionId: string) {
+    const url = new URL(
+      `/${orgId}/context-studio/workbench?preview=changes&previewId=${contextVersionId}`,
+      this.hexUrl,
+    );
+    return url.toString();
+  }
 
   private async makeRequestBase(
     path: string,
@@ -243,6 +319,48 @@ export class HexClient {
     const response = await this.makeRequestWithoutResponse(
       `/api/v1/guides/draft/${guideId}`,
       "DELETE",
+    );
+    if (response.status === "error") {
+      throw new Error(response.message);
+    }
+    return response.data;
+  }
+
+  async createChangeset(request: CreateChangesetRequest) {
+    const response = await this.makeRequest<CreateChangesetResponse>(
+      "/api/v1/context/version",
+      "POST",
+      request,
+    );
+    if (response.status === "error") {
+      throw new Error(response.message);
+    }
+    return response.data;
+  }
+
+  async applyOperationToChangeset(
+    contextVersionId: string,
+    request: ApplyOperationToChangesetRequest,
+  ) {
+    const response = await this.makeRequest<ApplyOperationToChangesetResponse>(
+      `/api/v1/context/version/${contextVersionId}`,
+      "POST",
+      request,
+    );
+    if (response.status === "error") {
+      throw new Error(response.message);
+    }
+    return response.data;
+  }
+
+  async publishChangeset(
+    contextVersionId: string,
+    request: PublishChangesetRequest,
+  ) {
+    const response = await this.makeRequest<PublishChangesetResponse>(
+      `/api/v1/context/version/${contextVersionId}/publish`,
+      "POST",
+      request,
     );
     if (response.status === "error") {
       throw new Error(response.message);
