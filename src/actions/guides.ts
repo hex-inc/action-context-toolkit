@@ -6,7 +6,6 @@ import { getFilesInDir } from "../fileUtils";
 import picomatch from "picomatch";
 import { TransformSchema } from "../configSchema";
 import { chunk } from "../utils";
-import { getPreviewLink } from "../hex-client";
 
 type GuideWithPointer = {
   originalFilePath: string;
@@ -148,12 +147,19 @@ const addPruneGuidesToChangeset = async (
   contextVersionId: string,
   matchingGuides: GuideWithPointer[],
 ) => {
+  const hexPathsToRemovedPaths = matchingGuides.reduce(
+    (acc, guide) => {
+      acc[guide.hexFilePath] = guide.originalFilePath;
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
   const removedGuides = await parsedConfig.hexClient.applyOperationToChangeset(
     contextVersionId,
     {
       operation: {
         type: "prune_guides",
-        guideFilePaths: matchingGuides.map((guide) => guide.originalFilePath),
+        guideFilePaths: matchingGuides.map((guide) => guide.hexFilePath),
         externalSource: {
           source: "github",
           base: parsedConfig.envVars.baseUrl,
@@ -164,7 +170,9 @@ const addPruneGuidesToChangeset = async (
     },
   );
   if (removedGuides.result.type === "prune_guides") {
-    return removedGuides.result.removedGuideFilePaths;
+    return removedGuides.result.removedGuideFilePaths.map(
+      (filePath) => hexPathsToRemovedPaths[filePath],
+    );
   } else {
     return [];
   }
@@ -226,7 +234,7 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
     // This is a preview, we don't need to publish
     // TODO include a github comment here
     core.info(
-      `Preview link: ${getPreviewLink(parsedConfig.envVars.baseUrl, orgId, contextVersionId)}`,
+      `Preview link: ${parsedConfig.hexClient.getPreviewLink(orgId, contextVersionId)}`,
     );
     return;
   } else {

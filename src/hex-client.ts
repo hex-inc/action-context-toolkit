@@ -145,6 +145,14 @@ export class HexClient {
     private readonly hexToken: string,
   ) {}
 
+  getPreviewLink(orgId: string, contextVersionId: string) {
+    const url = new URL(
+      `/${orgId}/context-studio/workbench?preview=changes&previewId=${contextVersionId}`,
+      this.hexUrl,
+    );
+    return url.toString();
+  }
+
   private async makeRequestBase(
     path: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
@@ -360,11 +368,3 @@ export class HexClient {
     return response.data;
   }
 }
-
-export const getPreviewLink = (
-  hexUrl: string,
-  orgId: string,
-  contextVersionId: string,
-) => {
-  return `${hexUrl}/${orgId}/context-studio/workbench?preview=changes&previewId=${contextVersionId}`;
-};
