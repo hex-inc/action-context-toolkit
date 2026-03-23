@@ -10,7 +10,7 @@ inputs:
     type: boolean
     default: true
   comment_on_pr:
-    description: Adds a comment summary for the guide upload
+    description: If true, comments on GitHub pull requests with guide upload results. Requires a `GITHUB_TOKEN` environment variable with the pull-requests: write permission
     type: boolean
     default: false
   config_file:

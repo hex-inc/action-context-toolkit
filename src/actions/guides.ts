@@ -189,7 +189,9 @@ const uploadGuidesViaChangeset = async (
   if (warnings.length > 0) {
     core.warning(`There were warnings in uploading some of your guides`);
     for (const warning of warnings) {
-      core.warning(`${warning.originalFilePath}: ${warning.message}`);
+      core.warning(
+        `${warning.originalFilePath}: ${warning.message.replace(/\n/g, "")}`,
+      );
     }
   }
   if (upsertedGuides.length > 0) {
@@ -214,8 +216,6 @@ const addPruneGuidesToChangeset = async (
   contextVersionId: string,
   matchingGuides: GuideWithPointer[],
 ): Promise<string[]> => {
-  const hexPathsToRemovedPaths =
-    getMapForHexFilePathToOriginalFilePath(matchingGuides);
   const removedGuides = await parsedConfig.hexClient.applyOperationToChangeset(
     contextVersionId,
     {
@@ -232,8 +232,8 @@ const addPruneGuidesToChangeset = async (
     },
   );
   if (removedGuides.result.type === "prune_guides") {
-    return removedGuides.result.removedGuideFilePaths.map(
-      (filePath) => hexPathsToRemovedPaths[filePath] ?? filePath,
+    return removedGuides.result.removedGuides.map(
+      (guide) => guide?.externalSource?.path ?? guide.hexFilePath,
     );
   } else {
     return [];

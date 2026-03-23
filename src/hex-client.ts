@@ -20,7 +20,7 @@ type ExternalSourceLocatorWithMetadataInput = {
   branch: string;
 };
 
-type ExternalContextSourceInput = {
+type ExternalContextSource = {
   source: "github";
   base: string;
   owner: string;
@@ -61,7 +61,7 @@ type UpsertDraftGuideRequest = {
   files: {
     filePath: string;
     contents: string;
-    externalSource: ExternalContextSourceInput;
+    externalSource: ExternalContextSource;
   }[];
 };
 
@@ -100,7 +100,7 @@ type ApplyOperationToChangesetRequest = {
         files: {
           filePath: string;
           contents: string;
-          externalSource: ExternalContextSourceInput;
+          externalSource: ExternalContextSource;
         }[];
         forceWrite?: boolean;
       }
@@ -131,7 +131,10 @@ type ApplyOperationToChangesetResponse = {
       }
     | {
         type: "prune_guides";
-        removedGuideFilePaths: string[];
+        removedGuides: {
+          hexFilePath: string;
+          externalSource: ExternalContextSource | null;
+        }[];
       };
 };
 
