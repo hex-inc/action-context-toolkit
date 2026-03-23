@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 import fs from "fs/promises";
 import path from "path";
-import { ParsedConfig } from "../types";
+import { GuideActionResult, ParsedConfig } from "../types";
 import { getFilesInDir } from "../fileUtils";
 import picomatch from "picomatch";
 import { TransformSchema } from "../configSchema";
@@ -109,6 +109,9 @@ const uploadGuidesViaChangeset = async (
 
   const chunkedFiles = chunk(matchingGuides, 20);
 
+  const upsertedGuides: { filePath: string; id: string }[] = [];
+  const noops: { filePath: string }[] = [];
+  const warnings: { filePath: string; message: string }[] = [];
   for (const chunk of chunkedFiles) {
     const files = await Promise.all(
       chunk.map(async (guide) => ({
@@ -126,19 +129,42 @@ const uploadGuidesViaChangeset = async (
       })),
     );
 
-    await parsedConfig.hexClient.applyOperationToChangeset(contextVersionId, {
-      operation: {
-        type: "upsert_guide",
-        files,
+    const result = await parsedConfig.hexClient.applyOperationToChangeset(
+      contextVersionId,
+      {
+        operation: {
+          type: "upsert_guide",
+          files,
+        },
       },
-    });
+    );
+    if (result.result.type === "upsert_guide") {
+      upsertedGuides.push(...result.result.files);
+      noops.push(...result.result.noops);
+      warnings.push(...result.result.warnings);
+    }
   }
 
-  core.info(`Successfully staged ${matchingGuides.length} guides to Hex`);
+  if (warnings.length > 0) {
+    core.warning(`There were warnings in uploading some of your guides`);
+    for (const warning of warnings) {
+      core.warning(`${warning.filePath}: ${warning.message}`);
+    }
+  }
+  if (upsertedGuides.length > 0) {
+    core.info(
+      `Successfully updated ${upsertedGuides.length} guides in Hex: ${upsertedGuides.map((guide) => guide.filePath).join(", ")}. ${noops.length} guides had no changes.`,
+    );
+  } else {
+    core.info(`No guides had any changes.`);
+  }
 
   return {
     contextVersionId,
     orgId,
+    upsertedGuides,
+    noops,
+    warnings,
   };
 };
 
@@ -146,7 +172,7 @@ const addPruneGuidesToChangeset = async (
   parsedConfig: ParsedConfig,
   contextVersionId: string,
   matchingGuides: GuideWithPointer[],
-) => {
+): Promise<string[]> => {
   const hexPathsToRemovedPaths = matchingGuides.reduce(
     (acc, guide) => {
       acc[guide.hexFilePath] = guide.originalFilePath;
@@ -170,22 +196,26 @@ const addPruneGuidesToChangeset = async (
     },
   );
   if (removedGuides.result.type === "prune_guides") {
-    return removedGuides.result.removedGuideFilePaths.map(
-      (filePath) => hexPathsToRemovedPaths[filePath],
-    );
+    return removedGuides.result.removedGuideFilePaths
+      .map((filePath) => hexPathsToRemovedPaths[filePath])
+      .filter((filePath) => filePath !== undefined);
   } else {
     return [];
   }
 };
 
-export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
+export const runGuidesAction = async (
+  parsedConfig: ParsedConfig,
+): Promise<GuideActionResult> => {
   const guidesResult = await getGuidesFromLocal(parsedConfig);
 
   if (guidesResult.missingGuides.length > 0) {
     const missingGuidesMessage = `The following guides were defined in config but were not found: ${guidesResult.missingGuides.join(", ")}`;
     if (parsedConfig.envVars.type === "pull_request") {
       core.setFailed(missingGuidesMessage);
-      return;
+      return {
+        type: "incomplete",
+      };
     } else {
       core.warning(missingGuidesMessage);
       if (guidesResult.matchingGuides.length > 0) {
@@ -198,7 +228,9 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
 
   if (guidesResult.matchingGuides.length === 0) {
     core.info("No guides found");
-    return;
+    return {
+      type: "incomplete",
+    };
   }
 
   if (parsedConfig.envVars.type === "pull_request") {
@@ -208,10 +240,9 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
   } else {
     core.info(`Uploading ${guidesResult.matchingGuides.length} guides to Hex`);
   }
-  const { contextVersionId, orgId } = await uploadGuidesViaChangeset(
-    parsedConfig,
-    guidesResult.matchingGuides,
-  );
+  const { contextVersionId, orgId, upsertedGuides, noops, warnings } =
+    await uploadGuidesViaChangeset(parsedConfig, guidesResult.matchingGuides);
+  let deletedGuides: string[] = [];
 
   if (parsedConfig.inputs.deleteUntrackedGuides) {
     core.info("Checking if there are any untracked guides");
@@ -220,9 +251,9 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
       contextVersionId,
       guidesResult.matchingGuides,
     );
-    core.info(`Deleting ${removedGuides.length} untracked guides from Hex`);
+    deletedGuides = removedGuides;
     core.info(
-      `Removing the following guides from Hex: ${removedGuides.map((guide) => guide).join(", ")}`,
+      `Removing the following ${removedGuides.length} guides from Hex: ${removedGuides.map((guide) => guide).join(", ")}`,
     );
   } else {
     core.info(
@@ -230,23 +261,28 @@ export const runGuidesAction = async (parsedConfig: ParsedConfig) => {
     );
   }
 
-  if (parsedConfig.envVars.type === "pull_request") {
-    // This is a preview, we don't need to publish
-    // TODO include a github comment here
-    core.info(
-      `Preview link: ${parsedConfig.hexClient.getPreviewLink(orgId, contextVersionId)}`,
-    );
-    return;
-  } else {
+  if (parsedConfig.envVars.type === "push") {
     if (!parsedConfig.inputs.publishGuides) {
       core.info(
         "Not publishing guides automatically. Set publish_guides to true to publish guide changes",
       );
+    } else {
+      await parsedConfig.hexClient.publishChangeset(contextVersionId, {
+        updateLatestVersion: parsedConfig.inputs.publishGuides,
+      });
+      core.info(`Successfully applied changes to Hex`);
     }
-
-    await parsedConfig.hexClient.publishChangeset(contextVersionId, {
-      updateLatestVersion: parsedConfig.inputs.publishGuides,
-    });
-    core.info(`Successfully applied changes to Hex`);
+  } else {
+    core.info(
+      `Preview changes in Hex: ${parsedConfig.hexClient.getPreviewLink(orgId, contextVersionId)}`,
+    );
   }
+  return {
+    type: "complete",
+    orgId,
+    upsertedGuides,
+    noops,
+    warnings,
+    deletedGuides,
+  };
 };

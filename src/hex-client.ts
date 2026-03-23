@@ -120,6 +120,9 @@ type ApplyOperationToChangesetResponse = {
           id: string;
           filePath: string;
         }[];
+        noops: {
+          filePath: string;
+        }[];
         warnings: {
           filePath: string;
           message: string;
