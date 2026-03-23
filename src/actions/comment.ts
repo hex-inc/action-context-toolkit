@@ -29,7 +29,7 @@ const createUpsertGuideRow = (
   showWarningColumn: boolean,
 ) => {
   const guideColumn = `[${guide.originalFilePath}](${getOriginalFileLink(parsedConfig, guide.originalFilePath)})`;
-  const statusColumn = guide.result === "created" ? "Added" : "Updated";
+  const statusColumn = guide.result === "created" ? "⬆️ Added" : "✏️ Modified";
   const warningsColumn =
     guide.warnings.length > 0
       ? `<details><summary>⚠️ Warnings (${guide.warnings.length})</summary><pre>${guide.warnings.map(replaceNewlinesWithBreaks).join("<br />")}</pre></details>`
@@ -39,7 +39,7 @@ const createUpsertGuideRow = (
 };
 
 const createDeletedGuideRow = (guide: string, showWarningColumn: boolean) => {
-  return `| \`${guide}\` | Deleted |${showWarningColumn ? " |" : ""}`;
+  return `| ~~\`${guide}\`~~ | ❌ Deleted |${showWarningColumn ? " |" : ""}`;
 };
 
 const generateCommentBody = (
@@ -111,14 +111,8 @@ ${guideActionResult.deletedGuides
     );
   }
 
-  if (guideActionResult.noops.length > 0) {
-    summary.push(
-      `${guideActionResult.noops.length === 1 ? "1 guide" : `${guideActionResult.noops.length} guides`} had no changes`,
-    );
-  }
-
   return `${HEX_COMMENT_IDENTIFIER}
-  ${summary.join(", ")}. [Test changes in Hex](${parsedConfig.hexClient.getPreviewLink(guideActionResult.orgId, guideActionResult.contextVersionId)}).
+🟢 Success - ${summary.join(", ")}. [Test changes in Hex](${parsedConfig.hexClient.getPreviewLink(guideActionResult.orgId, guideActionResult.contextVersionId)}).
 
 ${markdownTable}
 
