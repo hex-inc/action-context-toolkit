@@ -119,6 +119,7 @@ type ApplyOperationToChangesetResponse = {
         files: {
           id: string;
           filePath: string;
+          result: "created" | "updated";
         }[];
         noops: {
           filePath: string;
