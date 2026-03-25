@@ -8,6 +8,24 @@ export type ParsedConfig = {
   hexClient: HexClient;
 };
 
+export type UpsertedGuideResult = {
+  originalFilePath: string;
+  hexFilePath: string;
+  id: string;
+  result: "created" | "updated";
+};
+
+export type NoopGuideResult = {
+  originalFilePath: string;
+  hexFilePath: string;
+};
+
+export type WarningGuideResult = {
+  originalFilePath: string;
+  hexFilePath: string;
+  message: string;
+};
+
 export type GuideActionResult =
   | {
       type: "incomplete";
@@ -15,8 +33,9 @@ export type GuideActionResult =
   | {
       type: "complete";
       orgId: string;
-      upsertedGuides: { filePath: string; id: string }[];
-      noops: { filePath: string }[];
-      warnings: { filePath: string; message: string }[];
+      contextVersionId: string;
+      upsertedGuides: UpsertedGuideResult[];
+      noops: NoopGuideResult[];
+      warnings: WarningGuideResult[];
       deletedGuides: string[];
     };

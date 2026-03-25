@@ -1,7 +1,13 @@
 import * as core from "@actions/core";
 import fs from "fs/promises";
 import path from "path";
-import { GuideActionResult, ParsedConfig } from "../types";
+import {
+  GuideActionResult,
+  NoopGuideResult,
+  ParsedConfig,
+  UpsertedGuideResult,
+  WarningGuideResult,
+} from "../types";
 import { getFilesInDir } from "../fileUtils";
 import picomatch from "picomatch";
 import { TransformSchema } from "../configSchema";
@@ -15,6 +21,18 @@ type GuideWithPointer = {
 type GuideFromLocalResult = {
   matchingGuides: GuideWithPointer[];
   missingGuides: string[];
+};
+
+const getMapForHexFilePathToOriginalFilePath = (
+  matchingGuides: GuideWithPointer[],
+) => {
+  return matchingGuides.reduce(
+    (acc, guide) => {
+      acc[guide.hexFilePath] = guide.originalFilePath;
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
 };
 
 export const getGuidesFromLocal = async (parsedConfig: {
@@ -109,9 +127,9 @@ const uploadGuidesViaChangeset = async (
 
   const chunkedFiles = chunk(matchingGuides, 20);
 
-  const upsertedGuides: { filePath: string; id: string }[] = [];
-  const noops: { filePath: string }[] = [];
-  const warnings: { filePath: string; message: string }[] = [];
+  const upsertedGuides: UpsertedGuideResult[] = [];
+  const noops: NoopGuideResult[] = [];
+  const warnings: WarningGuideResult[] = [];
   for (const chunk of chunkedFiles) {
     const files = await Promise.all(
       chunk.map(async (guide) => ({
@@ -139,21 +157,46 @@ const uploadGuidesViaChangeset = async (
       },
     );
     if (result.result.type === "upsert_guide") {
-      upsertedGuides.push(...result.result.files);
-      noops.push(...result.result.noops);
-      warnings.push(...result.result.warnings);
+      const hexPathsToOriginalFilePaths =
+        getMapForHexFilePathToOriginalFilePath(matchingGuides);
+      upsertedGuides.push(
+        ...result.result.files.map((f) => ({
+          originalFilePath:
+            hexPathsToOriginalFilePaths[f.filePath] ?? f.filePath,
+          hexFilePath: f.filePath,
+          result: f.result,
+          id: f.id,
+        })),
+      );
+      noops.push(
+        ...result.result.noops.map((f) => ({
+          originalFilePath:
+            hexPathsToOriginalFilePaths[f.filePath] ?? f.filePath,
+          hexFilePath: f.filePath,
+        })),
+      );
+      warnings.push(
+        ...result.result.warnings.map((f) => ({
+          originalFilePath:
+            hexPathsToOriginalFilePaths[f.filePath] ?? f.filePath,
+          hexFilePath: f.filePath,
+          message: f.message,
+        })),
+      );
     }
   }
 
   if (warnings.length > 0) {
     core.warning(`There were warnings in uploading some of your guides`);
     for (const warning of warnings) {
-      core.warning(`${warning.filePath}: ${warning.message}`);
+      core.warning(
+        `${warning.originalFilePath}: ${warning.message.replace(/\n/g, "")}`,
+      );
     }
   }
   if (upsertedGuides.length > 0) {
     core.info(
-      `Successfully updated ${upsertedGuides.length} guides in Hex: ${upsertedGuides.map((guide) => guide.filePath).join(", ")}. ${noops.length} guides had no changes.`,
+      `Successfully updated ${upsertedGuides.length} guides in Hex: ${upsertedGuides.map((guide) => guide.originalFilePath).join(", ")}. ${noops.length} guides had no changes.`,
     );
   } else {
     core.info(`No guides had any changes.`);
@@ -173,13 +216,6 @@ const addPruneGuidesToChangeset = async (
   contextVersionId: string,
   matchingGuides: GuideWithPointer[],
 ): Promise<string[]> => {
-  const hexPathsToRemovedPaths = matchingGuides.reduce(
-    (acc, guide) => {
-      acc[guide.hexFilePath] = guide.originalFilePath;
-      return acc;
-    },
-    {} as Record<string, string>,
-  );
   const removedGuides = await parsedConfig.hexClient.applyOperationToChangeset(
     contextVersionId,
     {
@@ -196,9 +232,9 @@ const addPruneGuidesToChangeset = async (
     },
   );
   if (removedGuides.result.type === "prune_guides") {
-    return removedGuides.result.removedGuideFilePaths
-      .map((filePath) => hexPathsToRemovedPaths[filePath])
-      .filter((filePath) => filePath !== undefined);
+    return removedGuides.result.removedGuides.map(
+      (guide) => guide?.externalSource?.path ?? guide.hexFilePath,
+    );
   } else {
     return [];
   }
@@ -280,6 +316,7 @@ export const runGuidesAction = async (
   return {
     type: "complete",
     orgId,
+    contextVersionId,
     upsertedGuides,
     noops,
     warnings,

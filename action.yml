@@ -9,6 +9,11 @@ inputs:
     description: Delete guides that are no longer tracked in the config file. If false, guides that have been synced in the past but are no longer tracked will not be deleted from Hex
     type: boolean
     default: true
+  comment_on_pr:
+    description: |
+      If true, comments on GitHub pull requests with guide upload results. Requires a `GITHUB_TOKEN` environment variable with the pull-requests: write permission.
+    type: boolean
+    default: false
   config_file:
     description: |
       The path to the config file. This file should be a JSON file that includes the following properties
