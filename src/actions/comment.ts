@@ -84,15 +84,20 @@ const generateCommentBody = (
     (guide) => guide.warnings.length > 0,
   );
 
-  const markdownTable = `
-${getTableHeaders(hasAnyWarnings)}
+  let markdownTable = `
+${getTableHeaders(hasAnyWarnings)}`;
+  if (upsertedGuidesWithWarnings.length > 0) {
+    markdownTable += `
 ${upsertedGuidesWithWarnings
   .map((guide) => createUpsertGuideRow(parsedConfig, guide, hasAnyWarnings))
-  .join("\n")}
+  .join("\n")}`;
+  }
+  if (guideActionResult.deletedGuides.length > 0) {
+    markdownTable += `
 ${guideActionResult.deletedGuides
   .map((guide) => createDeletedGuideRow(guide, hasAnyWarnings))
-  .join("\n")}
-`;
+  .join("\n")}`;
+  }
 
   const summary: string[] = [];
   if (numberOfAddedGuides > 0) {
@@ -115,7 +120,6 @@ ${guideActionResult.deletedGuides
 🟢 Success - ${summary.join(", ")}. [Test changes in Hex](${parsedConfig.hexClient.getPreviewLink(guideActionResult.orgId, guideActionResult.contextVersionId)}).
 
 ${markdownTable}
-
 
 `;
 };
