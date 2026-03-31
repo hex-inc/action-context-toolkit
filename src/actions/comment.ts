@@ -42,7 +42,7 @@ const createDeletedGuideRow = (guide: string, showWarningColumn: boolean) => {
   return `| ~~\`${guide}\`~~ | ❌ Deleted |${showWarningColumn ? " |" : ""}`;
 };
 
-const generateCommentBody = (
+export const generateCommentBody = (
   parsedConfig: ParsedConfig,
   guideActionResult: GuideActionResult,
 ): string | null => {
@@ -83,16 +83,18 @@ const generateCommentBody = (
   const hasAnyWarnings = upsertedGuidesWithWarnings.some(
     (guide) => guide.warnings.length > 0,
   );
+  const markdownRows = [
+    ...upsertedGuidesWithWarnings.map((guide) =>
+      createUpsertGuideRow(parsedConfig, guide, hasAnyWarnings),
+    ),
+    ...guideActionResult.deletedGuides.map((guide) =>
+      createDeletedGuideRow(guide, hasAnyWarnings),
+    ),
+  ];
 
   const markdownTable = `
 ${getTableHeaders(hasAnyWarnings)}
-${upsertedGuidesWithWarnings
-  .map((guide) => createUpsertGuideRow(parsedConfig, guide, hasAnyWarnings))
-  .join("\n")}
-${guideActionResult.deletedGuides
-  .map((guide) => createDeletedGuideRow(guide, hasAnyWarnings))
-  .join("\n")}
-`;
+${markdownRows.join("\n")}`;
 
   const summary: string[] = [];
   if (numberOfAddedGuides > 0) {
@@ -115,7 +117,6 @@ ${guideActionResult.deletedGuides
 🟢 Success - ${summary.join(", ")}. [Test changes in Hex](${parsedConfig.hexClient.getPreviewLink(guideActionResult.orgId, guideActionResult.contextVersionId)}).
 
 ${markdownTable}
-
 
 `;
 };
