@@ -35,11 +35,11 @@ const createUpsertGuideRow = (
       ? `<details><summary>⚠️ Warnings (${guide.warnings.length})</summary><pre>${guide.warnings.map(replaceNewlinesWithBreaks).join("<br />")}</pre></details>`
       : "";
 
-  return `| ~~${guideColumn}~~ | ${statusColumn} | ${showWarningColumn ? `${warningsColumn} |` : ""}`;
+  return `| ${guideColumn} | ${statusColumn} | ${showWarningColumn ? `${warningsColumn} |` : ""}`;
 };
 
 const createDeletedGuideRow = (guide: string, showWarningColumn: boolean) => {
-  return `| \`${guide}\` | ❌ Deleted |${showWarningColumn ? " |" : ""}`;
+  return `| ~~\`${guide}\`~~ | ❌ Deleted |${showWarningColumn ? " |" : ""}`;
 };
 
 const generateCommentBody = (
