@@ -20,7 +20,7 @@ type ExternalSourceLocatorWithMetadataInput = {
   branch: string;
 };
 
-type ExternalContextSourceInput = {
+type ExternalContextSource = {
   source: "github";
   base: string;
   owner: string;
@@ -61,7 +61,7 @@ type UpsertDraftGuideRequest = {
   files: {
     filePath: string;
     contents: string;
-    externalSource: ExternalContextSourceInput;
+    externalSource: ExternalContextSource;
   }[];
 };
 
@@ -100,7 +100,7 @@ type ApplyOperationToChangesetRequest = {
         files: {
           filePath: string;
           contents: string;
-          externalSource: ExternalContextSourceInput;
+          externalSource: ExternalContextSource;
         }[];
         forceWrite?: boolean;
       }
@@ -119,6 +119,7 @@ type ApplyOperationToChangesetResponse = {
         files: {
           id: string;
           filePath: string;
+          result: "created" | "updated";
         }[];
         noops: {
           filePath: string;
@@ -130,7 +131,10 @@ type ApplyOperationToChangesetResponse = {
       }
     | {
         type: "prune_guides";
-        removedGuideFilePaths: string[];
+        removedGuides: {
+          hexFilePath: string;
+          externalSource: ExternalContextSource | null;
+        }[];
       };
 };
 
@@ -150,7 +154,7 @@ export class HexClient {
 
   getPreviewLink(orgId: string, contextVersionId: string) {
     const url = new URL(
-      `/${orgId}/context-studio/workbench?preview=changes&previewId=${contextVersionId}`,
+      `/${orgId}/context-studio/workbench?preview=ask-preview&previewId=${contextVersionId}`,
       this.hexUrl,
     );
     return url.toString();
