@@ -316,6 +316,8 @@ export const runGuidesAction = async (
         `Preview changes in Hex: ${parsedConfig.hexClient.getPreviewLink(orgId, contextVersionId)}`,
       );
     }
+  } else {
+    core.info("No changes were detected in this sync");
   }
 
   return {
