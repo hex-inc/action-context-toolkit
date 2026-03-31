@@ -1,5 +1,5 @@
 import { HexClient } from "../../hex-client";
-import { describe, test, expect, vi, afterEach } from "vitest";
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { GuideActionResult, ParsedConfig } from "../../types";
 import { generateCommentBody } from "../comment";
 
@@ -26,6 +26,11 @@ const parsedConfig: ParsedConfig = {
 };
 
 describe("generateCommentBody", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-31T12:00:00.000Z"));
+  });
+
   test("should generate comment body with added, modified and deleted guides", () => {
     const guideActionResult: GuideActionResult = {
       type: "complete",
@@ -52,7 +57,7 @@ describe("generateCommentBody", () => {
     const commentBody = generateCommentBody(parsedConfig, guideActionResult);
     expect(commentBody).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success - 1 guide added, 1 guide updated, 1 guide deleted. [Test changes in Hex](https://example.com/1234567890/context-studio/workbench?preview=ask-preview&previewId=1234567890).
+      🟢 Success - 1 guide added, 1 guide updated, 1 guide deleted. [Test changes in Hex](https://example.com/1234567890/context-studio/workbench?preview=ask-preview&previewId=1234567890&externalSourceLinkEpoch=1774958400000).
 
 
       | Guide | Status | 
@@ -78,7 +83,7 @@ describe("generateCommentBody", () => {
     const commentBody = generateCommentBody(parsedConfig, guideActionResult);
     expect(commentBody).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success - 1 guide deleted. [Test changes in Hex](https://example.com/1234567890/context-studio/workbench?preview=ask-preview&previewId=1234567890).
+      🟢 Success - 1 guide deleted. [Test changes in Hex](https://example.com/1234567890/context-studio/workbench?preview=ask-preview&previewId=1234567890&externalSourceLinkEpoch=1774958400000).
 
 
       | Guide | Status | 
