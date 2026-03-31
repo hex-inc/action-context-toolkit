@@ -297,22 +297,29 @@ export const runGuidesAction = async (
     );
   }
 
-  if (parsedConfig.envVars.type === "push") {
-    if (!parsedConfig.inputs.publishGuides) {
-      core.info(
-        "Not publishing guides automatically. Set publish_guides to true to publish guide changes",
-      );
+  const totalChanges = deletedGuides.length + upsertedGuides.length;
+
+  if (totalChanges > 0) {
+    if (parsedConfig.envVars.type === "push") {
+      if (!parsedConfig.inputs.publishGuides) {
+        core.info(
+          "Not publishing guides automatically. Set publish_guides to true to publish guide changes",
+        );
+      } else {
+        await parsedConfig.hexClient.publishChangeset(contextVersionId, {
+          updateLatestVersion: parsedConfig.inputs.publishGuides,
+        });
+        core.info(`Successfully applied changes to Hex`);
+      }
     } else {
-      await parsedConfig.hexClient.publishChangeset(contextVersionId, {
-        updateLatestVersion: parsedConfig.inputs.publishGuides,
-      });
-      core.info(`Successfully applied changes to Hex`);
+      core.info(
+        `Preview changes in Hex: ${parsedConfig.hexClient.getPreviewLink(orgId, contextVersionId)}`,
+      );
     }
   } else {
-    core.info(
-      `Preview changes in Hex: ${parsedConfig.hexClient.getPreviewLink(orgId, contextVersionId)}`,
-    );
+    core.info("No changes were detected in this sync");
   }
+
   return {
     type: "complete",
     orgId,
