@@ -6,11 +6,11 @@ const HEX_COMMENT_IDENTIFIER = `<!-- hex-context-toolkit-comment-37a4e83 do not 
 
 const getOriginalFileLink = (
   parsedConfig: ParsedConfig,
-  originalFilePath: string
+  originalFilePath: string,
 ) => {
   return new URL(
     `${parsedConfig.envVars.owner}/${parsedConfig.envVars.repo}/blob/${parsedConfig.envVars.sha}/${originalFilePath}`,
-    parsedConfig.envVars.baseUrl
+    parsedConfig.envVars.baseUrl,
   ).toString();
 };
 
@@ -26,7 +26,7 @@ const replaceNewlinesWithBreaks = (text: string) => {
 const createUpsertGuideRow = (
   parsedConfig: ParsedConfig,
   guide: UpsertedGuideResult & { warnings: string[] },
-  showWarningColumn: boolean
+  showWarningColumn: boolean,
 ) => {
   const guideColumn = `[${guide.originalFilePath}](${getOriginalFileLink(parsedConfig, guide.originalFilePath)})`;
   const statusColumn = guide.result === "created" ? "⬆️ Added" : "✏️ Modified";
@@ -44,7 +44,7 @@ const createDeletedGuideRow = (guide: string, showWarningColumn: boolean) => {
 
 export const generateCommentBody = (
   parsedConfig: ParsedConfig,
-  guideActionResult: GuideActionResult
+  guideActionResult: GuideActionResult,
 ): string | null => {
   if (guideActionResult.type === "incomplete") {
     return null;
@@ -63,14 +63,14 @@ export const generateCommentBody = (
       ];
       return acc;
     },
-    {} as Record<string, string[]>
+    {} as Record<string, string[]>,
   );
 
   const numberOfAddedGuides = guideActionResult.upsertedGuides.filter(
-    (guide) => guide.result === "created"
+    (guide) => guide.result === "created",
   ).length;
   const numberOfUpdatedGuides = guideActionResult.upsertedGuides.filter(
-    (guide) => guide.result === "updated"
+    (guide) => guide.result === "updated",
   ).length;
   const numberOfDeletedGuides = guideActionResult.deletedGuides.length;
 
@@ -78,38 +78,38 @@ export const generateCommentBody = (
     (guide) => ({
       ...guide,
       warnings: warningsByOriginalFilePath[guide.originalFilePath] ?? [],
-    })
+    }),
   );
   const hasAnyWarnings = upsertedGuidesWithWarnings.some(
-    (guide) => guide.warnings.length > 0
+    (guide) => guide.warnings.length > 0,
   );
-  const markdownLines = [
+  const markdownRows = [
     ...upsertedGuidesWithWarnings.map((guide) =>
-      createUpsertGuideRow(parsedConfig, guide, hasAnyWarnings)
+      createUpsertGuideRow(parsedConfig, guide, hasAnyWarnings),
     ),
     ...guideActionResult.deletedGuides.map((guide) =>
-      createDeletedGuideRow(guide, hasAnyWarnings)
+      createDeletedGuideRow(guide, hasAnyWarnings),
     ),
   ];
 
   const markdownTable = `
 ${getTableHeaders(hasAnyWarnings)}
-${markdownLines.join("\n")}`;
+${markdownRows.join("\n")}`;
 
   const summary: string[] = [];
   if (numberOfAddedGuides > 0) {
     summary.push(
-      `${numberOfAddedGuides === 1 ? "1 guide" : `${numberOfAddedGuides} guides`} added`
+      `${numberOfAddedGuides === 1 ? "1 guide" : `${numberOfAddedGuides} guides`} added`,
     );
   }
   if (numberOfUpdatedGuides > 0) {
     summary.push(
-      `${numberOfUpdatedGuides === 1 ? "1 guide" : `${numberOfUpdatedGuides} guides`} updated`
+      `${numberOfUpdatedGuides === 1 ? "1 guide" : `${numberOfUpdatedGuides} guides`} updated`,
     );
   }
   if (numberOfDeletedGuides > 0) {
     summary.push(
-      `${numberOfDeletedGuides === 1 ? "1 guide" : `${numberOfDeletedGuides} guides`} deleted`
+      `${numberOfDeletedGuides === 1 ? "1 guide" : `${numberOfDeletedGuides} guides`} deleted`,
     );
   }
 
@@ -123,7 +123,7 @@ ${markdownTable}
 
 export const commentOnPullRequest = async (
   parsedConfig: ParsedConfig,
-  guideActionResult: GuideActionResult
+  guideActionResult: GuideActionResult,
 ) => {
   const { commentOnPr } = parsedConfig.inputs;
   if (!commentOnPr || parsedConfig.envVars.type !== "pull_request") {
@@ -131,11 +131,11 @@ export const commentOnPullRequest = async (
   }
   if (!parsedConfig.envVars.token) {
     throw new Error(
-      "GITHUB_TOKEN is not set, cannot comment on pull_requests. Please ensure the GITHUB_TOKEN environment variable is set."
+      "GITHUB_TOKEN is not set, cannot comment on pull_requests. Please ensure the GITHUB_TOKEN environment variable is set.",
     );
   } else if (!parsedConfig.envVars.pullRequestNumber) {
     throw new Error(
-      "Could not detect pull request number, cannot create comment on this pull request."
+      "Could not detect pull request number, cannot create comment on this pull request.",
     );
   }
 
@@ -158,10 +158,10 @@ export const commentOnPullRequest = async (
       repo,
       issue_number: parsedConfig.envVars.pullRequestNumber,
       per_page: 100,
-    }
+    },
   )) {
     const maybeHexComment = comments.find((comment) =>
-      comment.body?.includes(HEX_COMMENT_IDENTIFIER)
+      comment.body?.includes(HEX_COMMENT_IDENTIFIER),
     );
     if (maybeHexComment) {
       existingCommentId = maybeHexComment.id;
