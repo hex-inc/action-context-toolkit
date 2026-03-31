@@ -297,7 +297,9 @@ export const runGuidesAction = async (
     );
   }
 
-  if (deletedGuides.length === 0 && upsertedGuides.length === 0) {
+  const totalChanges = deletedGuides.length + upsertedGuides.length;
+
+  if (totalChanges > 0) {
     if (parsedConfig.envVars.type === "push") {
       if (!parsedConfig.inputs.publishGuides) {
         core.info(
