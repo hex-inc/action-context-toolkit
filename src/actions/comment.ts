@@ -42,7 +42,7 @@ const createDeletedGuideRow = (guide: string, showWarningColumn: boolean) => {
   return `| ~~\`${guide}\`~~ | ❌ Deleted |${showWarningColumn ? " |" : ""}`;
 };
 
-const generateCommentBody = (
+export const generateCommentBody = (
   parsedConfig: ParsedConfig,
   guideActionResult: GuideActionResult,
 ): string | null => {
