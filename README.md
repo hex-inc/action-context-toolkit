@@ -9,6 +9,7 @@ This action currently supports uploading guide files, unstructured context that 
 ## Features
 - Selectively upload documents in a larger repo
 - Automatically publish and delete guides in Hex
+- Preview and test guide changes on pull requests
 
 ## Usage
 
@@ -41,7 +42,7 @@ jobs:
         publish_guides: true # publish guides automatically (default true)
         delete_untracked_guides: true # removes guides from hex that were also deleted in your repository (default true)
         hex_url: https://app.hex.tech # by default, this is https://app.hex.tech - change if you have a single tenant hosted stack
-        comment_on_pr: true # To configure this, you must include a `GITHUB_TOKEN` in the env and ensure it has the pull-requests: write permission (see above)
+        comment_on_pr: true # To configure this, you must include a `GITHUB_TOKEN` in the env and ensure it has the pull-requests: write permission (see above).
 ```
 
 Which references a `hex_context.config.json` file. You can define paths to your guides in the following ways:
