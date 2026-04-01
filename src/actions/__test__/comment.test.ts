@@ -57,7 +57,7 @@ describe("generateCommentBody", () => {
     const commentBody = generateCommentBody(parsedConfig, guideActionResult);
     expect(commentBody).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success - 1 guide added, 1 guide updated, 1 guide deleted. [Test changes in Hex](https://example.com/1234567890/context-studio/workbench?preview=ask-preview&previewId=1234567890&externalSourceLinkEpoch=1774958400000).
+      🟢 Success - 1 guide added, 1 guide updated, 1 guide deleted. [Test changes in Hex](https://example.com/1234567890/context-studio/workbench?preview=ask-preview&previewId=1234567890&createdAt=1774958400000).
 
 
       | Guide | Status | 
@@ -83,7 +83,7 @@ describe("generateCommentBody", () => {
     const commentBody = generateCommentBody(parsedConfig, guideActionResult);
     expect(commentBody).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success - 1 guide deleted. [Test changes in Hex](https://example.com/1234567890/context-studio/workbench?preview=ask-preview&previewId=1234567890&externalSourceLinkEpoch=1774958400000).
+      🟢 Success - 1 guide deleted. [Test changes in Hex](https://example.com/1234567890/context-studio/workbench?preview=ask-preview&previewId=1234567890&createdAt=1774958400000).
 
 
       | Guide | Status | 
