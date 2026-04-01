@@ -153,8 +153,9 @@ export class HexClient {
   ) {}
 
   getPreviewLink(orgId: string, contextVersionId: string) {
+    const now = Date.now();
     const url = new URL(
-      `/${orgId}/context-studio/workbench?preview=ask-preview&previewId=${contextVersionId}`,
+      `/${orgId}/context-studio/workbench?preview=ask-preview&previewId=${contextVersionId}&createdAt=${now}`,
       this.hexUrl,
     );
     return url.toString();
