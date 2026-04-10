@@ -20,7 +20,9 @@ export type ExpectedEnvVars = {
 
 // This should all be set by the Github Action environment
 export const getExpectedEnvVars = (): ExpectedEnvVars => {
-  const isPushEvent = process.env["GITHUB_EVENT_NAME"] === "push";
+  const isPushEvent =
+    process.env["GITHUB_EVENT_NAME"] === "push" ||
+    process.env["GITHUB_EVENT_NAME"] === "workflow_dispatch";
   const isPullRequestEvent =
     process.env["GITHUB_EVENT_NAME"] === "pull_request";
 
