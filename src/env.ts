@@ -22,7 +22,8 @@ export type ExpectedEnvVars = {
 export const getExpectedEnvVars = (): ExpectedEnvVars => {
   const isPushEvent =
     process.env["GITHUB_EVENT_NAME"] === "push" ||
-    process.env["GITHUB_EVENT_NAME"] === "workflow_dispatch";
+    process.env["GITHUB_EVENT_NAME"] === "workflow_dispatch" ||
+    process.env["GITHUB_EVENT_NAME"] === "schedule";
   const isPullRequestEvent =
     process.env["GITHUB_EVENT_NAME"] === "pull_request";
 
