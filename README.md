@@ -42,18 +42,23 @@ jobs:
           config_file: hex_context.config.json
           token: ${{ secrets.HEX_API_TOKEN }} # Create a workspace token with the Guides write scope and set this in your repository settings
           # optional configuration
-          publish_guides: true # publish guides automatically (default true)
-          delete_untracked_guides: true # removes guides from hex that were also deleted in your repository (default true)
+          publish: true # publish guides automatically on push (default true)
           hex_url: https://app.hex.tech # by default, this is https://app.hex.tech - change if you have a single tenant hosted stack
           comment_on_pr: true # To configure this, you must include a `GITHUB_TOKEN` in the env and ensure it has the pull-requests: write permission (see above).
 ```
 
-Which references a `hex_context.config.json` file. You can define paths to your guides in the following ways:
+Which references a `hex_context.config.json` file.
+
+### Guides
+
+You can define paths to your guides in the following ways:
 
 - `path` - the path to a guide file
   - You can also specify `hexFilePath` if you want the path that shows up in Hex to be different to how your guides are structured in your repository
 - `pattern` - matches a pattern - e.g. (`guides/*.md` - matches .md files in a guides folder or `guides/**/*.md` - matches .md files in the guides folder, including sub-directories)
   - You can also optionally specify a `transform` with `{ "stripFolders": true }` which will rewrite the path when uploaded to Hex to only include the file name (ignoring the folder path), e.g. folder1/folder2/guide.md -> guide.md
+
+### Example config
 
 ```json
 {
@@ -87,4 +92,4 @@ v2 requires the Hex CLI to be installed before running this action. Add the foll
   run: curl -fsSL https://hex.tech/install.sh | bash
 ```
 
-And update your action reference from `@v1` to `@v2`.
+And update your action reference from `@v1` to `@v2`, and rename the `publish_guides` input to `publish`. The `delete_untracked_guides` input has been removed — guide pruning is now always enabled by default.
