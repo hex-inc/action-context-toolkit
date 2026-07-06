@@ -23,7 +23,7 @@ inputs:
     description: The URL of the Hex instance
     default: https://app.hex.tech
   publish:
-    description: Publish guides automatically when the action runs on a push event. If false, a preview is created but not published.
+    description: Publish resources automatically when the action runs on a push event. If false, a preview is created but not published.
     default: "false"
 
 runs:

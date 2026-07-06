@@ -18,21 +18,23 @@ describe("generateCommentBody", () => {
     const body = generateCommentBody(
       envVars,
       "https://app.hex.tech/preview/1",
-      [
-        {
-          originalFilePath: "guide.md",
-          hexFilePath: "guide.md",
-          id: "id1",
-          result: "created",
-        },
-        {
-          originalFilePath: "another-guide.md",
-          hexFilePath: "another-guide.md",
-          id: "id2",
-          result: "updated",
-        },
-      ],
-      ["deleted-guide.md"],
+      {
+        upserted: [
+          {
+            originalFilePath: "guide.md",
+            hexFilePath: "guide.md",
+            id: "id1",
+            result: "created",
+          },
+          {
+            originalFilePath: "another-guide.md",
+            hexFilePath: "another-guide.md",
+            id: "id2",
+            result: "updated",
+          },
+        ],
+        removed: ["deleted-guide.md"],
+      },
     );
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
@@ -52,8 +54,10 @@ describe("generateCommentBody", () => {
     const body = generateCommentBody(
       envVars,
       "https://app.hex.tech/preview/2",
-      [],
-      ["deleted-guide.md"],
+      {
+        upserted: [],
+        removed: ["deleted-guide.md"],
+      },
     );
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
@@ -68,7 +72,14 @@ describe("generateCommentBody", () => {
   });
 
   test("shows preview link when no guide changes", () => {
-    const body = generateCommentBody(envVars, "https://app.hex.tech/preview/3");
+    const body = generateCommentBody(
+      envVars,
+      "https://app.hex.tech/preview/3",
+      {
+        upserted: [],
+        removed: [],
+      },
+    );
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
       🟢 Context preview created. [Test changes in Hex](https://app.hex.tech/preview/3).
@@ -76,27 +87,105 @@ describe("generateCommentBody", () => {
     `);
   });
 
+  test("shows preview link when guides is undefined", () => {
+    const body = generateCommentBody(envVars, "https://app.hex.tech/preview/4");
+    expect(body).toMatchInlineSnapshot(`
+      "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
+      🟢 Context preview created. [Test changes in Hex](https://app.hex.tech/preview/4).
+      "
+    `);
+  });
+
   test("renders warning column when a guide has warnings", () => {
     const body = generateCommentBody(
       envVars,
-      "https://app.hex.tech/preview/4",
-      [
-        {
-          originalFilePath: "guides/warn.md",
-          hexFilePath: "guides/warn.md",
-          id: "id3",
-          result: "updated",
-          warnings: ["File is too large"],
-        },
-        {
-          originalFilePath: "guides/ok.md",
-          hexFilePath: "guides/ok.md",
-          id: "id4",
-          result: "created",
-        },
-      ],
+      "https://app.hex.tech/preview/5",
+      {
+        upserted: [
+          {
+            originalFilePath: "guides/warn.md",
+            hexFilePath: "guides/warn.md",
+            id: "id3",
+            result: "updated",
+            warnings: ["File is too large"],
+          },
+          {
+            originalFilePath: "guides/ok.md",
+            hexFilePath: "guides/ok.md",
+            id: "id4",
+            result: "created",
+          },
+        ],
+        removed: [],
+      },
     );
     expect(body).toContain("Warnings");
     expect(body).toContain("File is too large");
+  });
+
+  test("renders semantic models table", () => {
+    const body = generateCommentBody(
+      envVars,
+      "https://app.hex.tech/preview/6",
+      undefined,
+      [
+        {
+          dirPath: "semantic/sales",
+          result: {
+            semanticProject: { name: "Sales Model" },
+            details: { contents: { datasets: [{}, {}] } },
+          },
+        },
+        {
+          dirPath: "semantic/broken",
+          result: {
+            semanticProject: { name: "Broken Model" },
+            details: { problems: [{}] },
+          },
+        },
+      ],
+    );
+    expect(body).toMatchInlineSnapshot(`
+      "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
+      🟢 Context preview created. [Test changes in Hex](https://app.hex.tech/preview/6).
+
+      **Semantic models**
+
+      | Semantic model | Directory | Status |
+      |----------------|-----------|--------|
+      | Sales Model | semantic/sales | ✅ OK |
+      | Broken Model | semantic/broken | ⚠️ 1 problem |
+      "
+    `);
+  });
+
+  test("renders guides and semantic models together", () => {
+    const body = generateCommentBody(
+      envVars,
+      "https://app.hex.tech/preview/7",
+      {
+        upserted: [
+          {
+            originalFilePath: "guide.md",
+            hexFilePath: "guide.md",
+            id: "id1",
+            result: "created",
+          },
+        ],
+        removed: [],
+      },
+      [
+        {
+          dirPath: "semantic/sales",
+          result: {
+            semanticProject: { name: "Sales Model" },
+            details: {},
+          },
+        },
+      ],
+    );
+    expect(body).toContain("1 guide added");
+    expect(body).toContain("Sales Model");
+    expect(body).toContain("✅ OK");
   });
 });

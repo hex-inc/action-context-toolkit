@@ -40,7 +40,7 @@ jobs:
           config_file: hex_context.config.json
           token: ${{ secrets.HEX_API_TOKEN }} # Create a workspace token with the Guides write scope and set this in your repository settings
           # optional configuration
-          publish: true # publish guides automatically on push (default true)
+          publish: true # publish resources automatically on push (default true)
           hex_url: https://app.hex.tech # by default, this is https://app.hex.tech - change if you have a single tenant hosted stack
           comment_on_pr: true # To configure this, you must include a `GITHUB_TOKEN` in the env and ensure it has the pull-requests: write permission (see above).
 ```
@@ -55,6 +55,13 @@ You can define paths to your guides in the following ways:
   - You can also specify `hexFilePath` if you want the path that shows up in Hex to be different to how your guides are structured in your repository
 - `pattern` - matches a pattern - e.g. (`guides/*.md` - matches .md files in a guides folder or `guides/**/*.md` - matches .md files in the guides folder, including sub-directories)
   - You can also optionally specify a `transform` with `{ "stripFolders": true }` which will rewrite the path when uploaded to Hex to only include the file name (ignoring the folder path), e.g. folder1/folder2/guide.md -> guide.md
+
+### Semantic models
+
+You can sync semantic model definitions from your repository. Each entry requires:
+
+- `id` - the semantic project ID from your Hex workspace
+- `path` - path to the directory containing the semantic model files
 
 ### Example config
 
@@ -76,6 +83,12 @@ You can define paths to your guides in the following ways:
     },
     {
       "pattern": "guides/**/*.md"
+    }
+  ],
+  "semanticModels": [
+    {
+      "id": "<semantic-project-uuid>",
+      "path": "path/to/semantic/model/dir"
     }
   ]
 }

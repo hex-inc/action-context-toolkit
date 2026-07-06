@@ -1,7 +1,7 @@
 import * as github from "@actions/github";
 import * as core from "@actions/core";
 import { ExpectedEnvVars } from "../env";
-import { CliUpsertedGuide } from "../types";
+import { CliGuideResult, CliSemanticModelResult } from "../types";
 
 const HEX_COMMENT_IDENTIFIER = `<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->`;
 
@@ -20,22 +20,25 @@ const getTableHeaders = (showWarningColumn: boolean) => {
 |-------|--------|${showWarningColumn ? "------|" : ""}`;
 };
 
+const getSemanticModelsTableHeaders = () =>
+  `| Semantic model | Directory | Status |
+|----------------|-----------|--------|`;
+
 const replaceNewlinesWithBreaks = (text: string) =>
   text.replace(/\n/g, "<br />");
 
 export const generateCommentBody = (
   envVars: ExpectedEnvVars,
   previewLink: string,
-  upsertedGuides: CliUpsertedGuide[] = [],
-  removedGuides: string[] = [],
+  guides?: CliGuideResult,
+  semanticModels?: CliSemanticModelResult[],
 ): string => {
-  const numberOfAdded = upsertedGuides.filter(
-    (g) => g.result === "created",
-  ).length;
-  const numberOfUpdated = upsertedGuides.filter(
-    (g) => g.result === "updated",
-  ).length;
-  const numberOfDeleted = removedGuides.length;
+  const upserted = guides?.upserted ?? [];
+  const removed = guides?.removed ?? [];
+
+  const numberOfAdded = upserted.filter((g) => g.result === "created").length;
+  const numberOfUpdated = upserted.filter((g) => g.result === "updated").length;
+  const numberOfDeleted = removed.length;
 
   const summary: string[] = [];
   if (numberOfAdded > 0)
@@ -51,12 +54,10 @@ export const generateCommentBody = (
       `${numberOfDeleted === 1 ? "1 guide" : `${numberOfDeleted} guides`} deleted`,
     );
 
-  const hasAnyWarnings = upsertedGuides.some(
-    (g) => (g.warnings?.length ?? 0) > 0,
-  );
+  const hasAnyWarnings = upserted.some((g) => (g.warnings?.length ?? 0) > 0);
 
   const rows: string[] = [
-    ...upsertedGuides.map((guide) => {
+    ...upserted.map((guide) => {
       const guideColumn = `[${guide.originalFilePath}](${getOriginalFileLink(envVars, guide.originalFilePath)})`;
       const statusColumn =
         guide.result === "created" ? "⬆️ Added" : "✏️ Modified";
@@ -67,32 +68,50 @@ export const generateCommentBody = (
         : "";
       return `| ${guideColumn} | ${statusColumn} | ${hasAnyWarnings ? `${warningsColumn} |` : ""}`;
     }),
-    ...removedGuides.map(
+    ...removed.map(
       (filePath) =>
         `| ~~\`${filePath}\`~~ | ❌ Deleted |${hasAnyWarnings ? " |" : ""}`,
     ),
   ];
 
-  const hasChanges = upsertedGuides.length > 0 || removedGuides.length > 0;
+  const hasChanges = upserted.length > 0 || removed.length > 0;
   const summaryLine =
     summary.length > 0
       ? `🟢 Success - ${summary.join(", ")}. [Test changes in Hex](${previewLink}).`
       : `🟢 Context preview created. [Test changes in Hex](${previewLink}).`;
 
+  // Two \n before the table header restores the double blank line from the original format.
   const guidesSection = hasChanges
     ? `\n\n${getTableHeaders(hasAnyWarnings)}\n${rows.join("\n")}\n`
     : "";
 
+  const semanticModelsSection =
+    semanticModels && semanticModels.length > 0
+      ? `\n**Semantic models**\n\n${getSemanticModelsTableHeaders()}\n${semanticModels
+          .map((sm) => {
+            const problemCount = sm.result.details.problems?.length ?? 0;
+            const warningCount = sm.result.details.warnings?.length ?? 0;
+            const status =
+              problemCount > 0
+                ? `⚠️ ${problemCount} ${problemCount === 1 ? "problem" : "problems"}`
+                : warningCount > 0
+                  ? `⚠️ ${warningCount} ${warningCount === 1 ? "warning" : "warnings"}`
+                  : "✅ OK";
+            return `| ${sm.result.semanticProject.name} | ${sm.dirPath} | ${status} |`;
+          })
+          .join("\n")}\n`
+      : "";
+
   return `${HEX_COMMENT_IDENTIFIER}
 ${summaryLine}
-${guidesSection}`;
+${guidesSection}${semanticModelsSection}`;
 };
 
 export const commentOnPullRequest = async (
   envVars: ExpectedEnvVars & { type: "pull_request" },
   previewLink: string,
-  upsertedGuides: CliUpsertedGuide[] = [],
-  removedGuides: string[] = [],
+  guides?: CliGuideResult,
+  semanticModels?: CliSemanticModelResult[],
 ) => {
   if (!envVars.token) {
     throw new Error(
@@ -108,8 +127,8 @@ export const commentOnPullRequest = async (
   const body = generateCommentBody(
     envVars,
     previewLink,
-    upsertedGuides,
-    removedGuides,
+    guides,
+    semanticModels,
   );
   const { owner, repo } = envVars;
   const octokit = github.getOctokit(envVars.token);
@@ -142,7 +161,7 @@ export const commentOnPullRequest = async (
       comment_id: existingCommentId,
       body,
     });
-    core.info("Updated existing Hex guide preview comment on pull request.");
+    core.info("Updated existing Hex context preview comment on pull request.");
   } else {
     await octokit.rest.issues.createComment({
       owner,
@@ -150,6 +169,6 @@ export const commentOnPullRequest = async (
       issue_number: envVars.pullRequestNumber,
       body,
     });
-    core.info("Created Hex guide preview comment on pull request.");
+    core.info("Created Hex context preview comment on pull request.");
   }
 };
