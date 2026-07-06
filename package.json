@@ -1,6 +1,6 @@
 {
   "name": "action-context-toolkit",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Upload external context to Hex",
   "homepage": "https://github.com/hex-inc/action-context-toolkit",
   "repository": {
