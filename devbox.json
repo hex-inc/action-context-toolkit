@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.14.2/.schema/devbox.schema.json",
+  "packages": {
+    "nodejs": {
+      "version": "20.19",
+      "disable_plugin": true
+    },
+    "git": "latest"
+  }
+}
