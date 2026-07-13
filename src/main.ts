@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
+import { ensureHexCli } from "./cli";
 import { getExpectedEnvVars } from "./env";
 import { getInputs } from "./inputs";
 import { commentOnPullRequest } from "./actions/comment";
@@ -10,6 +11,8 @@ const HEX_CLI_LOGIN_TOKEN_ENV = "HEX_CLI_LOGIN_TOKEN";
 async function run() {
   const inputs = await getInputs();
   const envVars = getExpectedEnvVars();
+
+  await ensureHexCli();
 
   process.env[HEX_CLI_LOGIN_TOKEN_ENV] = inputs.hexToken;
 

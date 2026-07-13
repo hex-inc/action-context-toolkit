@@ -32,8 +32,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Install Hex CLI
-        run: curl -fsSL https://hex.tech/install.sh | bash
       - name: Upload guide files
         uses: hex-inc/action-context-toolkit@v2
         env:
@@ -85,11 +83,4 @@ You can define paths to your guides in the following ways:
 
 ## Migrating from v1 to v2
 
-v2 requires the Hex CLI to be installed before running this action. Add the following step before the `Upload guide files` step in your workflow:
-
-```yml
-- name: Install Hex CLI
-  run: curl -fsSL https://hex.tech/install.sh | bash
-```
-
-And update your action reference from `@v1` to `@v2`, and rename the `publish_guides` input to `publish`. The `delete_untracked_guides` input has been removed — guide pruning is now always enabled by default.
+Update your action reference from `@v1` to `@v2`, and rename the `publish_guides` input to `publish`. The `delete_untracked_guides` input has been removed — guide pruning is now always enabled by default. The action uses an existing Hex CLI installation when available and otherwise installs the CLI automatically.
