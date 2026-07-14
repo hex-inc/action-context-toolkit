@@ -28,25 +28,24 @@ async function run() {
 
   // Run hex guide preview and capture JSON output.
   let previewStdout = "";
-  await exec.exec(
-    "hex",
-    [
-      "--profile",
-      "ci",
-      "guide",
-      "preview",
-      "--json",
-      "--config-path",
-      inputs.configFile,
-    ],
-    {
-      listeners: {
-        stdout: (data: Buffer) => {
-          previewStdout += data.toString();
-        },
+  const previewArgs = [
+    "--profile",
+    "ci",
+    "guide",
+    "preview",
+    "--json",
+    "--prune",
+    "--config-path",
+    inputs.configFile,
+  ];
+
+  await exec.exec("hex", previewArgs, {
+    listeners: {
+      stdout: (data: Buffer) => {
+        previewStdout += data.toString();
       },
     },
-  );
+  });
 
   const previewResult = JSON.parse(previewStdout) as CliPreviewResult;
   const { previewId, previewLink, upsertedGuides, removedGuides } =

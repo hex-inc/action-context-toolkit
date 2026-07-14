@@ -83,4 +83,8 @@ You can define paths to your guides in the following ways:
 
 ## Migrating from v1 to v2
 
-Update your action reference from `@v1` to `@v2`, and rename the `publish_guides` input to `publish`. The `delete_untracked_guides` input has been removed — guide pruning is now always enabled by default. The action uses an existing Hex CLI installation when available and otherwise installs the CLI automatically.
+The action now installs and uses the Hex CLI automatically, so no additional installation step is required.
+
+The `publish_guides` input remains supported for backwards compatibility, but new workflows should use `publish`.
+
+Guide pruning is now always enabled. Existing workflows that omit `delete_untracked_guides` or set it to `true` continue to work unchanged. Setting `delete_untracked_guides` to `false` is no longer supported and causes the action to fail before uploading any guides.
