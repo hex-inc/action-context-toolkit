@@ -42,6 +42,7 @@ jobs:
           # optional configuration
           publish: true # publish guides automatically on push (default true)
           hex_url: https://app.hex.tech # by default, this is https://app.hex.tech - change if you have a single tenant hosted stack
+          cli_version: 1.2026.07.09 # pinned by default; use another version or "latest"
           comment_on_pr: true # To configure this, you must include a `GITHUB_TOKEN` in the env and ensure it has the pull-requests: write permission (see above).
 ```
 
@@ -83,7 +84,7 @@ You can define paths to your guides in the following ways:
 
 ## Migrating from v1 to v2
 
-The action now installs and uses the Hex CLI automatically, so no additional installation step is required.
+The action now installs and uses a pinned Hex CLI version automatically, so no additional installation step is required. Configure `cli_version` to use a different release or `latest`.
 
 The `publish_guides` input remains supported for backwards compatibility, but new workflows should use `publish`.
 

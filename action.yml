@@ -22,9 +22,11 @@ inputs:
   hex_url:
     description: The URL of the Hex instance
     default: https://app.hex.tech
+  cli_version:
+    description: The Hex CLI version to install, or latest.
+    default: "1.2026.07.09"
   publish:
     description: Publish guides automatically when the action runs on a push event. If false, a preview is created but not published.
-    default: "false"
 
 runs:
   using: node24

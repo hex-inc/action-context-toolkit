@@ -12,7 +12,7 @@ async function run() {
   const inputs = await getInputs();
   const envVars = getExpectedEnvVars();
 
-  await ensureHexCli();
+  await ensureHexCli(inputs.cliVersion);
 
   process.env[HEX_CLI_LOGIN_TOKEN_ENV] = inputs.hexToken;
 
