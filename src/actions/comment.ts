@@ -1,16 +1,17 @@
 import * as github from "@actions/github";
 import * as core from "@actions/core";
-import { GuideActionResult, ParsedConfig, UpsertedGuideResult } from "../types";
+import { ExpectedEnvVars } from "../env";
+import { CliUpsertedGuide } from "../types";
 
 const HEX_COMMENT_IDENTIFIER = `<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->`;
 
 const getOriginalFileLink = (
-  parsedConfig: ParsedConfig,
+  envVars: ExpectedEnvVars,
   originalFilePath: string,
 ) => {
   return new URL(
-    `${parsedConfig.envVars.owner}/${parsedConfig.envVars.repo}/blob/${parsedConfig.envVars.sha}/${originalFilePath}`,
-    parsedConfig.envVars.baseUrl,
+    `${envVars.owner}/${envVars.repo}/blob/${envVars.sha}/${originalFilePath}`,
+    envVars.baseUrl,
   ).toString();
 };
 
@@ -19,136 +20,100 @@ const getTableHeaders = (showWarningColumn: boolean) => {
 |-------|--------|${showWarningColumn ? "------|" : ""}`;
 };
 
-const replaceNewlinesWithBreaks = (text: string) => {
-  return text.replace(/\n/g, "<br />");
-};
-
-const createUpsertGuideRow = (
-  parsedConfig: ParsedConfig,
-  guide: UpsertedGuideResult & { warnings: string[] },
-  showWarningColumn: boolean,
-) => {
-  const guideColumn = `[${guide.originalFilePath}](${getOriginalFileLink(parsedConfig, guide.originalFilePath)})`;
-  const statusColumn = guide.result === "created" ? "⬆️ Added" : "✏️ Modified";
-  const warningsColumn =
-    guide.warnings.length > 0
-      ? `<details><summary>⚠️ Warnings (${guide.warnings.length})</summary><pre>${guide.warnings.map(replaceNewlinesWithBreaks).join("<br />")}</pre></details>`
-      : "";
-
-  return `| ${guideColumn} | ${statusColumn} | ${showWarningColumn ? `${warningsColumn} |` : ""}`;
-};
-
-const createDeletedGuideRow = (guide: string, showWarningColumn: boolean) => {
-  return `| ~~\`${guide}\`~~ | ❌ Deleted |${showWarningColumn ? " |" : ""}`;
-};
+const replaceNewlinesWithBreaks = (text: string) =>
+  text.replace(/\n/g, "<br />");
 
 export const generateCommentBody = (
-  parsedConfig: ParsedConfig,
-  guideActionResult: GuideActionResult,
-): string | null => {
-  if (guideActionResult.type === "incomplete") {
-    return null;
-  } else if (
-    guideActionResult.deletedGuides.length === 0 &&
-    guideActionResult.upsertedGuides.length === 0
-  ) {
-    return null;
-  }
+  envVars: ExpectedEnvVars,
+  previewLink: string,
+  upsertedGuides: CliUpsertedGuide[] = [],
+  removedGuides: string[] = [],
+): string => {
+  const numberOfAdded = upsertedGuides.filter(
+    (g) => g.result === "created",
+  ).length;
+  const numberOfUpdated = upsertedGuides.filter(
+    (g) => g.result === "updated",
+  ).length;
+  const numberOfDeleted = removedGuides.length;
 
-  const warningsByOriginalFilePath = guideActionResult.warnings.reduce(
-    (acc, warning) => {
-      acc[warning.originalFilePath] = [
-        ...(acc[warning.originalFilePath] || []),
-        warning.message,
-      ];
-      return acc;
-    },
-    {} as Record<string, string[]>,
+  const summary: string[] = [];
+  if (numberOfAdded > 0)
+    summary.push(
+      `${numberOfAdded === 1 ? "1 guide" : `${numberOfAdded} guides`} added`,
+    );
+  if (numberOfUpdated > 0)
+    summary.push(
+      `${numberOfUpdated === 1 ? "1 guide" : `${numberOfUpdated} guides`} updated`,
+    );
+  if (numberOfDeleted > 0)
+    summary.push(
+      `${numberOfDeleted === 1 ? "1 guide" : `${numberOfDeleted} guides`} deleted`,
+    );
+
+  const hasAnyWarnings = upsertedGuides.some(
+    (g) => (g.warnings?.length ?? 0) > 0,
   );
 
-  const numberOfAddedGuides = guideActionResult.upsertedGuides.filter(
-    (guide) => guide.result === "created",
-  ).length;
-  const numberOfUpdatedGuides = guideActionResult.upsertedGuides.filter(
-    (guide) => guide.result === "updated",
-  ).length;
-  const numberOfDeletedGuides = guideActionResult.deletedGuides.length;
-
-  const upsertedGuidesWithWarnings = guideActionResult.upsertedGuides.map(
-    (guide) => ({
-      ...guide,
-      warnings: warningsByOriginalFilePath[guide.originalFilePath] ?? [],
+  const rows: string[] = [
+    ...upsertedGuides.map((guide) => {
+      const guideColumn = `[${guide.originalFilePath}](${getOriginalFileLink(envVars, guide.originalFilePath)})`;
+      const statusColumn =
+        guide.result === "created" ? "⬆️ Added" : "✏️ Modified";
+      const warningsColumn = hasAnyWarnings
+        ? guide.warnings && guide.warnings.length > 0
+          ? `<details><summary>⚠️ Warnings (${guide.warnings.length})</summary><pre>${guide.warnings.map(replaceNewlinesWithBreaks).join("<br />")}</pre></details>`
+          : ""
+        : "";
+      return `| ${guideColumn} | ${statusColumn} | ${hasAnyWarnings ? `${warningsColumn} |` : ""}`;
     }),
-  );
-  const hasAnyWarnings = upsertedGuidesWithWarnings.some(
-    (guide) => guide.warnings.length > 0,
-  );
-  const markdownRows = [
-    ...upsertedGuidesWithWarnings.map((guide) =>
-      createUpsertGuideRow(parsedConfig, guide, hasAnyWarnings),
-    ),
-    ...guideActionResult.deletedGuides.map((guide) =>
-      createDeletedGuideRow(guide, hasAnyWarnings),
+    ...removedGuides.map(
+      (filePath) =>
+        `| ~~\`${filePath}\`~~ | ❌ Deleted |${hasAnyWarnings ? " |" : ""}`,
     ),
   ];
 
-  const markdownTable = `
-${getTableHeaders(hasAnyWarnings)}
-${markdownRows.join("\n")}`;
+  const hasChanges = upsertedGuides.length > 0 || removedGuides.length > 0;
+  const summaryLine =
+    summary.length > 0
+      ? `🟢 Success - ${summary.join(", ")}. [Test changes in Hex](${previewLink}).`
+      : `🟢 Context preview created. [Test changes in Hex](${previewLink}).`;
 
-  const summary: string[] = [];
-  if (numberOfAddedGuides > 0) {
-    summary.push(
-      `${numberOfAddedGuides === 1 ? "1 guide" : `${numberOfAddedGuides} guides`} added`,
-    );
-  }
-  if (numberOfUpdatedGuides > 0) {
-    summary.push(
-      `${numberOfUpdatedGuides === 1 ? "1 guide" : `${numberOfUpdatedGuides} guides`} updated`,
-    );
-  }
-  if (numberOfDeletedGuides > 0) {
-    summary.push(
-      `${numberOfDeletedGuides === 1 ? "1 guide" : `${numberOfDeletedGuides} guides`} deleted`,
-    );
-  }
+  const guidesSection = hasChanges
+    ? `\n\n${getTableHeaders(hasAnyWarnings)}\n${rows.join("\n")}\n`
+    : "";
 
   return `${HEX_COMMENT_IDENTIFIER}
-🟢 Success - ${summary.join(", ")}. [Test changes in Hex](${parsedConfig.hexClient.getPreviewLink(guideActionResult.orgId, guideActionResult.contextVersionId)}).
-
-${markdownTable}
-
-`;
+${summaryLine}
+${guidesSection}`;
 };
 
 export const commentOnPullRequest = async (
-  parsedConfig: ParsedConfig,
-  guideActionResult: GuideActionResult,
+  envVars: ExpectedEnvVars & { type: "pull_request" },
+  previewLink: string,
+  upsertedGuides: CliUpsertedGuide[] = [],
+  removedGuides: string[] = [],
 ) => {
-  const { commentOnPr } = parsedConfig.inputs;
-  if (!commentOnPr || parsedConfig.envVars.type !== "pull_request") {
-    return;
-  }
-  if (!parsedConfig.envVars.token) {
+  if (!envVars.token) {
     throw new Error(
-      "GITHUB_TOKEN is not set, cannot comment on pull_requests. Please ensure the GITHUB_TOKEN environment variable is set.",
+      "GITHUB_TOKEN is not set, cannot comment on pull requests. Please ensure the GITHUB_TOKEN environment variable is set.",
     );
-  } else if (!parsedConfig.envVars.pullRequestNumber) {
+  }
+  if (!envVars.pullRequestNumber) {
     throw new Error(
       "Could not detect pull request number, cannot create comment on this pull request.",
     );
   }
 
-  const body = generateCommentBody(parsedConfig, guideActionResult);
+  const body = generateCommentBody(
+    envVars,
+    previewLink,
+    upsertedGuides,
+    removedGuides,
+  );
+  const { owner, repo } = envVars;
+  const octokit = github.getOctokit(envVars.token);
 
-  if (!body) {
-    core.info("No guide related changes, skipping comment");
-    return;
-  }
-
-  const { owner, repo } = parsedConfig.envVars;
-
-  const octokit = github.getOctokit(parsedConfig.envVars.token);
   let existingCommentId: number | undefined = undefined;
 
   for await (const { data: comments } of octokit.paginate.iterator(
@@ -156,7 +121,7 @@ export const commentOnPullRequest = async (
     {
       owner,
       repo,
-      issue_number: parsedConfig.envVars.pullRequestNumber,
+      issue_number: envVars.pullRequestNumber,
       per_page: 100,
     },
   )) {
@@ -173,16 +138,18 @@ export const commentOnPullRequest = async (
     await octokit.rest.issues.updateComment({
       owner,
       repo,
-      issue_number: parsedConfig.envVars.pullRequestNumber,
+      issue_number: envVars.pullRequestNumber,
       comment_id: existingCommentId,
       body,
     });
+    core.info("Updated existing Hex guide preview comment on pull request.");
   } else {
     await octokit.rest.issues.createComment({
       owner,
       repo,
-      issue_number: parsedConfig.envVars.pullRequestNumber,
+      issue_number: envVars.pullRequestNumber,
       body,
     });
+    core.info("Created Hex guide preview comment on pull request.");
   }
 };

@@ -1,6 +1,6 @@
 {
   "name": "action-context-toolkit",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Upload external context to Hex",
   "homepage": "https://github.com/hex-inc/action-context-toolkit",
   "repository": {
@@ -19,7 +19,6 @@
   "devDependencies": {
     "@swc/jest": "^0.2.39",
     "@types/node": "^25.2.3",
-    "@types/picomatch": "^4.0.2",
     "esbuild": "^0.27.3",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
@@ -27,8 +26,7 @@
   },
   "dependencies": {
     "@actions/core": "^3.0.0",
-    "@actions/github": "^9.0.0",
-    "picomatch": "^4.0.3",
-    "zod": "^4.3.6"
+    "@actions/exec": "^1.1.1",
+    "@actions/github": "^9.0.0"
   }
 }

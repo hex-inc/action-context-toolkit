@@ -1,28 +1,90 @@
 import * as core from "@actions/core";
+import * as exec from "@actions/exec";
+import { ensureHexCli } from "./cli";
 import { getExpectedEnvVars } from "./env";
 import { getInputs } from "./inputs";
-import { HexClient } from "./hex-client";
-import { runGuidesAction } from "./actions/guides";
 import { commentOnPullRequest } from "./actions/comment";
+import { CliPreviewResult } from "./types";
+
+const HEX_CLI_LOGIN_TOKEN_ENV = "HEX_CLI_LOGIN_TOKEN";
 
 async function run() {
-  const envVars = getExpectedEnvVars();
   const inputs = await getInputs();
-  const hexClient = new HexClient(inputs.hexUrl, inputs.hexToken);
-  const parsedConfig = {
-    inputs,
-    envVars,
-    hexClient,
-  };
-  const guideResults = await runGuidesAction(parsedConfig);
+  const envVars = getExpectedEnvVars();
 
-  if (parsedConfig.inputs.commentOnPr) {
-    await commentOnPullRequest(parsedConfig, guideResults);
-  } else {
-    core.info(
-      `ℹ️ Configure your GitHub action to leave a comment on your pull request which will include a summary of the any guide changes, as well as a preview of changes.
-Learn how to configure from our docs https://learn.hex.tech/docs/agent-management/context-management/guides#add-github-action`,
+  await ensureHexCli();
+
+  process.env[HEX_CLI_LOGIN_TOKEN_ENV] = inputs.hexToken;
+
+  await exec.exec("hex", [
+    "auth",
+    "login",
+    "ci",
+    "--hostname",
+    inputs.hexUrl,
+    "--token-from-env",
+    "--update",
+  ]);
+
+  // Run hex guide preview and capture JSON output.
+  let previewStdout = "";
+  const previewArgs = [
+    "--profile",
+    "ci",
+    "guide",
+    "preview",
+    "--json",
+    "--prune",
+    "--config-path",
+    inputs.configFile,
+  ];
+
+  await exec.exec("hex", previewArgs, {
+    listeners: {
+      stdout: (data: Buffer) => {
+        previewStdout += data.toString();
+      },
+    },
+  });
+
+  const previewResult = JSON.parse(previewStdout) as CliPreviewResult;
+  const { previewId, previewLink, upsertedGuides, removedGuides } =
+    previewResult;
+
+  if (!previewId || !previewLink) {
+    throw new Error(
+      `Unexpected output from hex guide preview: ${previewStdout}`,
     );
+  }
+
+  if (envVars.type === "push") {
+    if (inputs.publish) {
+      await exec.exec("hex", [
+        "--profile",
+        "ci",
+        "guide",
+        "publish",
+        previewId,
+      ]);
+    } else {
+      core.info(
+        "Not publishing guides automatically. Set publish to true to publish on push.",
+      );
+    }
+  } else if (envVars.type === "pull_request") {
+    core.info(`Guide preview created. Preview link: ${previewLink}`);
+    if (inputs.commentOnPr) {
+      await commentOnPullRequest(
+        envVars,
+        previewLink,
+        upsertedGuides,
+        removedGuides,
+      );
+    } else {
+      core.info(
+        `ℹ️ Configure comment_on_pr: true to leave a preview link comment on your pull request.`,
+      );
+    }
   }
 }
 
