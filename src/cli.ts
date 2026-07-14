@@ -4,7 +4,8 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const HEX_CLI_INSTALLER_URL = "https://hex.tech/install.sh";
+const HEX_CLI_RELEASES_URL = "https://github.com/hex-inc/hex-cli/releases";
+const HEX_CLI_VERSION = "1.2026.07.09";
 
 export async function ensureHexCli() {
   const { exitCode } = await exec.getExecOutput(
@@ -30,13 +31,15 @@ export async function ensureHexCli() {
 
   core.info("Hex CLI was not found; installing it now.");
 
+  const installerUrl = `${HEX_CLI_RELEASES_URL}/download/v${HEX_CLI_VERSION}/hex-installer.sh`;
+
   try {
     await exec.exec("curl", [
       "--proto",
       "=https",
       "--tlsv1.2",
       "-fsSL",
-      HEX_CLI_INSTALLER_URL,
+      installerUrl,
       "-o",
       installerPath,
     ]);
