@@ -5,9 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const HEX_CLI_RELEASES_URL = "https://github.com/hex-inc/hex-cli/releases";
-const HEX_CLI_VERSION = "1.2026.07.09";
 
-export async function ensureHexCli() {
+async function getInstalledHexCliVersion() {
   const { exitCode } = await exec.getExecOutput(
     "sh",
     ["-c", "command -v hex >/dev/null 2>&1"],
@@ -17,8 +16,27 @@ export async function ensureHexCli() {
     },
   );
 
-  if (exitCode === 0) {
-    core.info("Hex CLI is already installed; skipping installation.");
+  if (exitCode !== 0) {
+    return null;
+  }
+
+  const versionOutput = await exec.getExecOutput("hex", ["--version"], {
+    ignoreReturnCode: true,
+    silent: true,
+  });
+  if (versionOutput.exitCode !== 0) {
+    return null;
+  }
+
+  return versionOutput.stdout.trim().match(/^hex\s+(.+)$/)?.[1] ?? null;
+}
+
+export async function ensureHexCli(version: string) {
+  const installedVersion = await getInstalledHexCliVersion();
+  if (version !== "latest" && installedVersion === version) {
+    core.info(
+      `Hex CLI ${version} is already installed; skipping installation.`,
+    );
     return;
   }
 
@@ -27,11 +45,20 @@ export async function ensureHexCli() {
     temporaryDirectory,
     `hex-installer-${process.pid}.sh`,
   );
-  const installDirectory = join(temporaryDirectory, "hex-cli");
+  const installDirectory = join(temporaryDirectory, `hex-cli-${version}`);
 
-  core.info("Hex CLI was not found; installing it now.");
+  if (installedVersion) {
+    core.info(
+      `Hex CLI ${installedVersion} is installed, but ${version} is required; installing the required version.`,
+    );
+  } else {
+    core.info(`Hex CLI was not found; installing version ${version}.`);
+  }
 
-  const installerUrl = `${HEX_CLI_RELEASES_URL}/download/v${HEX_CLI_VERSION}/hex-installer.sh`;
+  const installerUrl =
+    version === "latest"
+      ? `${HEX_CLI_RELEASES_URL}/latest/download/hex-installer.sh`
+      : `${HEX_CLI_RELEASES_URL}/download/v${version}/hex-installer.sh`;
 
   try {
     await exec.exec("curl", [

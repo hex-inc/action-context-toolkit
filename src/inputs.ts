@@ -3,6 +3,7 @@ import * as core from "@actions/core";
 export type Inputs = {
   hexToken: string;
   hexUrl: string;
+  cliVersion: string;
   configFile: string;
   publish: boolean;
   commentOnPr: boolean;
@@ -12,6 +13,7 @@ export const getInputs = async (): Promise<Inputs> => {
   const configFile = core.getInput("config_file");
   const hexToken = core.getInput("token");
   const hexUrl = core.getInput("hex_url");
+  const cliVersion = core.getInput("cli_version");
   const publish = getBooleanInputWithDeprecatedFallback(
     "publish",
     "publish_guides",
@@ -39,6 +41,15 @@ export const getInputs = async (): Promise<Inputs> => {
     errors.push(`Expected a .json config file, got: ${configFile}`);
   }
 
+  if (
+    cliVersion !== "latest" &&
+    !/^v?\d+\.\d{4}\.\d{2}\.\d{2}$/.test(cliVersion)
+  ) {
+    errors.push(
+      `Invalid Hex CLI version: ${cliVersion}. Expected latest or a version such as 1.2026.07.09.`,
+    );
+  }
+
   if (!deleteUntrackedGuides) {
     errors.push(
       "delete_untracked_guides: false is no longer supported. The Hex CLI always prunes guides when previewing from a config file.",
@@ -49,7 +60,14 @@ export const getInputs = async (): Promise<Inputs> => {
     throw new Error(`Error with inputs:\n${errors.join("\n")}`);
   }
 
-  return { hexToken, hexUrl, configFile, publish, commentOnPr };
+  return {
+    hexToken,
+    hexUrl,
+    cliVersion: cliVersion.replace(/^v/, ""),
+    configFile,
+    publish,
+    commentOnPr,
+  };
 };
 
 const getBooleanInputWithDeprecatedFallback = (
