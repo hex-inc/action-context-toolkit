@@ -123,7 +123,7 @@ describe("generateCommentBody", () => {
     expect(body).toContain("File is too large");
   });
 
-  test("renders semantic models table", () => {
+  test("renders semantic projects table", () => {
     const body = generateCommentBody(
       envVars,
       "https://app.hex.tech/preview/6",
@@ -149,17 +149,17 @@ describe("generateCommentBody", () => {
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
       🟢 Context preview created. [Test changes in Hex](https://app.hex.tech/preview/6).
 
-      **Semantic models**
+      **Semantic projects**
 
-      | Semantic model | Directory | Status |
-      |----------------|-----------|--------|
+      | Name | Directory | Status |
+      |------|-----------|--------|
       | Sales Model | semantic/sales | ✅ OK |
       | Broken Model | semantic/broken | ⚠️ 1 problem |
       "
     `);
   });
 
-  test("renders guides and semantic models together", () => {
+  test("renders guides and semantic projects together", () => {
     const body = generateCommentBody(
       envVars,
       "https://app.hex.tech/preview/7",

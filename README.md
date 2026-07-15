@@ -56,12 +56,12 @@ You can define paths to your guides in the following ways:
 - `pattern` - matches a pattern - e.g. (`guides/*.md` - matches .md files in a guides folder or `guides/**/*.md` - matches .md files in the guides folder, including sub-directories)
   - You can also optionally specify a `transform` with `{ "stripFolders": true }` which will rewrite the path when uploaded to Hex to only include the file name (ignoring the folder path), e.g. folder1/folder2/guide.md -> guide.md
 
-### Semantic models
+### Semantic projects
 
-You can sync semantic model definitions from your repository. Each entry requires:
+You can sync semantic project definitions from your repository. Each entry requires:
 
 - `id` - the semantic project ID from your Hex workspace
-- `path` - path to the directory containing the semantic model files
+- `path` - path to the directory containing the semantic model and view files
 
 ### Example config
 
@@ -85,10 +85,10 @@ You can sync semantic model definitions from your repository. Each entry require
       "pattern": "guides/**/*.md"
     }
   ],
-  "semanticModels": [
+  "semanticProjects": [
     {
       "id": "<semantic-project-uuid>",
-      "path": "path/to/semantic/model/dir"
+      "path": "path/to/dir"
     }
   ]
 }

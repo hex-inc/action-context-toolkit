@@ -1,7 +1,7 @@
 import * as github from "@actions/github";
 import * as core from "@actions/core";
 import { ExpectedEnvVars } from "../env";
-import { CliGuideResult, CliSemanticModelResult } from "../types";
+import { CliGuideResult, CliSemanticProjectResult } from "../types";
 
 const HEX_COMMENT_IDENTIFIER = `<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->`;
 
@@ -20,9 +20,9 @@ const getTableHeaders = (showWarningColumn: boolean) => {
 |-------|--------|${showWarningColumn ? "------|" : ""}`;
 };
 
-const getSemanticModelsTableHeaders = () =>
-  `| Semantic model | Directory | Status |
-|----------------|-----------|--------|`;
+const getSemanticProjectsTableHeaders = () =>
+  `| Name | Directory | Status |
+|------|-----------|--------|`;
 
 const replaceNewlinesWithBreaks = (text: string) =>
   text.replace(/\n/g, "<br />");
@@ -31,7 +31,7 @@ export const generateCommentBody = (
   envVars: ExpectedEnvVars,
   previewLink: string,
   guides?: CliGuideResult,
-  semanticModels?: CliSemanticModelResult[],
+  semanticProjects?: CliSemanticProjectResult[],
 ): string => {
   const upserted = guides?.upserted ?? [];
   const removed = guides?.removed ?? [];
@@ -85,34 +85,36 @@ export const generateCommentBody = (
     ? `\n\n${getTableHeaders(hasAnyWarnings)}\n${rows.join("\n")}\n`
     : "";
 
-  const semanticModelsSection =
-    semanticModels && semanticModels.length > 0
-      ? `\n**Semantic models**\n\n${getSemanticModelsTableHeaders()}\n${semanticModels
-          .map((sm) => {
-            const problemCount = sm.result.details.problems?.length ?? 0;
-            const warningCount = sm.result.details.warnings?.length ?? 0;
+  const semanticProjectsSection =
+    semanticProjects && semanticProjects.length > 0
+      ? `\n**Semantic projects**\n\n${getSemanticProjectsTableHeaders()}\n${semanticProjects
+          .map((sp) => {
+            const problemCount = sp.result.details.problems?.length ?? 0;
+            const warningCount = sp.result.details.warnings?.length ?? 0;
             const status =
               problemCount > 0
                 ? `⚠️ ${problemCount} ${problemCount === 1 ? "problem" : "problems"}`
                 : warningCount > 0
                   ? `⚠️ ${warningCount} ${warningCount === 1 ? "warning" : "warnings"}`
                   : "✅ OK";
-            return `| ${sm.result.semanticProject.name} | ${sm.dirPath} | ${status} |`;
+            return `| ${sp.result.semanticProject.name} | ${sp.dirPath} | ${status} |`;
           })
           .join("\n")}\n`
       : "";
 
   return `${HEX_COMMENT_IDENTIFIER}
 ${summaryLine}
-${guidesSection}${semanticModelsSection}`;
+${guidesSection}${semanticProjectsSection}`;
 };
 
-export const commentOnPullRequest = async (
-  envVars: ExpectedEnvVars & { type: "pull_request" },
-  previewLink: string,
-  guides?: CliGuideResult,
-  semanticModels?: CliSemanticModelResult[],
-) => {
+export const commentOnPullRequest = async (params: {
+  envVars: ExpectedEnvVars & { type: "pull_request" };
+  previewLink: string;
+  guides?: CliGuideResult;
+  semanticProjects?: CliSemanticProjectResult[];
+}) => {
+  const { envVars, previewLink, guides, semanticProjects } = params;
+
   if (!envVars.token) {
     throw new Error(
       "GITHUB_TOKEN is not set, cannot comment on pull requests. Please ensure the GITHUB_TOKEN environment variable is set.",
@@ -128,7 +130,7 @@ export const commentOnPullRequest = async (
     envVars,
     previewLink,
     guides,
-    semanticModels,
+    semanticProjects,
   );
   const { owner, repo } = envVars;
   const octokit = github.getOctokit(envVars.token);

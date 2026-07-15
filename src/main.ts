@@ -4,7 +4,7 @@ import { ensureHexCli } from "./cli";
 import { getExpectedEnvVars } from "./env";
 import { getInputs } from "./inputs";
 import { commentOnPullRequest } from "./actions/comment";
-import { CliPreviewResult } from "./types";
+import { CliContextPreviewResult } from "./types";
 
 const HEX_CLI_LOGIN_TOKEN_ENV = "HEX_CLI_LOGIN_TOKEN";
 
@@ -26,15 +26,14 @@ async function run() {
     "--update",
   ]);
 
-  // Run hex guide preview and capture JSON output.
+  // Run hex context preview and capture JSON output.
   let previewStdout = "";
   const previewArgs = [
     "--profile",
     "ci",
-    "guide",
+    "context",
     "preview",
     "--json",
-    "--prune",
     "--config-path",
     inputs.configFile,
   ];
@@ -47,13 +46,12 @@ async function run() {
     },
   });
 
-  const previewResult = JSON.parse(previewStdout) as CliPreviewResult;
-  const { previewId, previewLink, upsertedGuides, removedGuides } =
-    previewResult;
+  const previewResult = JSON.parse(previewStdout) as CliContextPreviewResult;
+  const { previewId, previewLink, guides, semanticProjects } = previewResult;
 
   if (!previewId || !previewLink) {
     throw new Error(
-      `Unexpected output from hex guide preview: ${previewStdout}`,
+      `Unexpected output from hex context preview: ${previewStdout}`,
     );
   }
 
@@ -62,24 +60,24 @@ async function run() {
       await exec.exec("hex", [
         "--profile",
         "ci",
-        "guide",
+        "context",
         "publish",
         previewId,
       ]);
     } else {
       core.info(
-        "Not publishing guides automatically. Set publish to true to publish on push.",
+        "Not publishing context automatically. Set publish to true to publish on push.",
       );
     }
   } else if (envVars.type === "pull_request") {
-    core.info(`Guide preview created. Preview link: ${previewLink}`);
+    core.info(`Context preview created. Preview link: ${previewLink}`);
     if (inputs.commentOnPr) {
-      await commentOnPullRequest(
+      await commentOnPullRequest({
         envVars,
         previewLink,
-        upsertedGuides,
-        removedGuides,
-      );
+        guides,
+        semanticProjects,
+      });
     } else {
       core.info(
         `ℹ️ Configure comment_on_pr: true to leave a preview link comment on your pull request.`,
