@@ -24,7 +24,7 @@ inputs:
     default: https://app.hex.tech
   publish:
     description: Publish resources automatically when the action runs on a push event. If false, a preview is created but not published.
-    default: "false"
+    default: "true"
 
 runs:
   using: node24
