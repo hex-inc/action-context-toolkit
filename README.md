@@ -40,7 +40,6 @@ jobs:
           config_file: hex_context.config.json
           token: ${{ secrets.HEX_API_TOKEN }} # Create a workspace token with the Guides write scope and set this in your repository settings
           # optional configuration
-          publish: true # publish resources automatically on push (default true)
           hex_url: https://app.hex.tech # by default, this is https://app.hex.tech - change if you have a single tenant hosted stack
           comment_on_pr: true # To configure this, you must include a `GITHUB_TOKEN` in the env and ensure it has the pull-requests: write permission (see above).
 ```
@@ -98,6 +97,8 @@ You can sync semantic project definitions from your repository. Each entry requi
 
 The action now installs and uses the Hex CLI automatically, so no additional installation step is required.
 
-The `publish_guides` input remains supported for backwards compatibility, but new workflows should use `publish`.
+The `publish_guides` and `delete_untracked_guides` inputs have been removed.
 
-Guide pruning is now always enabled. Existing workflows that omit `delete_untracked_guides` or set it to `true` continue to work unchanged. Setting `delete_untracked_guides` to `false` is no longer supported and causes the action to fail before uploading any guides.
+Publishing now always occurs on push events to your default branches (usually `main` or `master`). Existing workflows that omit `publish` or set it to `true` will continue to work unchanged. Setting `publish` to `false` is no longer supported.
+
+Guide pruning is now always enabled. Existing workflows that omit `delete_untracked_guides` or set it to `true` continue to work unchanged. Setting `delete_untracked_guides` to `false` is no longer supported.
