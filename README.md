@@ -40,7 +40,6 @@ jobs:
           config_file: hex_context.config.json
           token: ${{ secrets.HEX_API_TOKEN }} # Create a workspace token with the Guides write scope and set this in your repository settings
           # optional configuration
-          publish: true # publish resources automatically on push (default true)
           hex_url: https://app.hex.tech # by default, this is https://app.hex.tech - change if you have a single tenant hosted stack
           comment_on_pr: true # To configure this, you must include a `GITHUB_TOKEN` in the env and ensure it has the pull-requests: write permission (see above).
 ```
