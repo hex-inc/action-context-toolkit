@@ -14,59 +14,34 @@ const envVars: ExpectedEnvVars = {
 };
 
 describe("generateCommentBody", () => {
-  test("renders added, modified and deleted guides", () => {
+  test("renders added and modified guides", () => {
     const body = generateCommentBody(
       envVars,
       "https://app.hex.tech/preview/1",
-      {
-        upserted: [
-          {
-            originalFilePath: "guide.md",
-            hexFilePath: "guide.md",
-            id: "id1",
-            result: "created",
-          },
-          {
-            originalFilePath: "another-guide.md",
-            hexFilePath: "another-guide.md",
-            id: "id2",
-            result: "updated",
-          },
-        ],
-        removed: ["deleted-guide.md"],
-      },
+      [
+        {
+          originalFilePath: "guide.md",
+          hexFilePath: "guide.md",
+          id: "id1",
+          result: "created",
+        },
+        {
+          originalFilePath: "another-guide.md",
+          hexFilePath: "another-guide.md",
+          id: "id2",
+          result: "updated",
+        },
+      ],
     );
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success - 1 guide added, 1 guide updated, 1 guide deleted. [Test changes in Hex](https://app.hex.tech/preview/1).
+      🟢 Success - 1 guide added, 1 guide updated. [Test changes in Hex](https://app.hex.tech/preview/1).
 
 
       | Guide | Status | 
       |-------|--------|
       | [guide.md](https://hex.tech/hex-inc/hex-inc/blob/1234567890/guide.md) | ⬆️ Added | 
       | [another-guide.md](https://hex.tech/hex-inc/hex-inc/blob/1234567890/another-guide.md) | ✏️ Modified | 
-      | ~~\`deleted-guide.md\`~~ | ❌ Deleted |
-      "
-    `);
-  });
-
-  test("renders deleted-only guides", () => {
-    const body = generateCommentBody(
-      envVars,
-      "https://app.hex.tech/preview/2",
-      {
-        upserted: [],
-        removed: ["deleted-guide.md"],
-      },
-    );
-    expect(body).toMatchInlineSnapshot(`
-      "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success - 1 guide deleted. [Test changes in Hex](https://app.hex.tech/preview/2).
-
-
-      | Guide | Status | 
-      |-------|--------|
-      | ~~\`deleted-guide.md\`~~ | ❌ Deleted |
       "
     `);
   });
@@ -75,10 +50,7 @@ describe("generateCommentBody", () => {
     const body = generateCommentBody(
       envVars,
       "https://app.hex.tech/preview/3",
-      {
-        upserted: [],
-        removed: [],
-      },
+      [],
     );
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
@@ -100,24 +72,21 @@ describe("generateCommentBody", () => {
     const body = generateCommentBody(
       envVars,
       "https://app.hex.tech/preview/5",
-      {
-        upserted: [
-          {
-            originalFilePath: "guides/warn.md",
-            hexFilePath: "guides/warn.md",
-            id: "id3",
-            result: "updated",
-            warnings: ["File is too large"],
-          },
-          {
-            originalFilePath: "guides/ok.md",
-            hexFilePath: "guides/ok.md",
-            id: "id4",
-            result: "created",
-          },
-        ],
-        removed: [],
-      },
+      [
+        {
+          originalFilePath: "guides/warn.md",
+          hexFilePath: "guides/warn.md",
+          id: "id3",
+          result: "updated",
+          warnings: ["File is too large"],
+        },
+        {
+          originalFilePath: "guides/ok.md",
+          hexFilePath: "guides/ok.md",
+          id: "id4",
+          result: "created",
+        },
+      ],
     );
     expect(body).toContain("Warnings");
     expect(body).toContain("File is too large");
@@ -163,17 +132,14 @@ describe("generateCommentBody", () => {
     const body = generateCommentBody(
       envVars,
       "https://app.hex.tech/preview/7",
-      {
-        upserted: [
-          {
-            originalFilePath: "guide.md",
-            hexFilePath: "guide.md",
-            id: "id1",
-            result: "created",
-          },
-        ],
-        removed: [],
-      },
+      [
+        {
+          originalFilePath: "guide.md",
+          hexFilePath: "guide.md",
+          id: "id1",
+          result: "created",
+        },
+      ],
       [
         {
           dirPath: "semantic/sales",

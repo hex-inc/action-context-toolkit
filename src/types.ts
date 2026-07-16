@@ -1,14 +1,7 @@
-export type CliUpsertedGuide = {
-  originalFilePath: string;
-  hexFilePath: string;
-  id: string;
-  result: "created" | "updated";
-  warnings?: string[];
-};
-
 export type CliGuideResult = {
-  upserted: CliUpsertedGuide[];
-  removed: string[];
+  name: string;
+  result: "created" | "updated" | "deleted";
+  warnings?: string[];
 };
 
 export type CliSemanticProjectResult = {
@@ -35,6 +28,6 @@ export type CliSemanticProjectResult = {
 export type CliContextPreviewResult = {
   previewId: string;
   previewLink: string;
-  guides: CliGuideResult;
+  guides: CliGuideResult[];
   semanticProjects: CliSemanticProjectResult[];
 };
