@@ -56,19 +56,13 @@ async function run() {
   }
 
   if (envVars.type === "push") {
-    if (inputs.publish) {
-      await exec.exec("hex", [
-        "--profile",
-        "ci",
-        "context",
-        "publish",
-        previewId,
-      ]);
-    } else {
-      core.info(
-        "Not publishing context automatically. Set publish to true to publish on push.",
-      );
-    }
+    await exec.exec("hex", [
+      "--profile",
+      "ci",
+      "context",
+      "publish",
+      previewId,
+    ]);
   } else if (envVars.type === "pull_request") {
     core.info(`Context preview created. Preview link: ${previewLink}`);
     if (inputs.commentOnPr) {

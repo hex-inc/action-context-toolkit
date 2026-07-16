@@ -1,14 +1,6 @@
 name: Hex Context Toolkit
 description: Upload external context to Hex
 inputs:
-  publish_guides:
-    description: Publish guides automatically when the action runs.
-    deprecationMessage: publish_guides is deprecated. Use publish instead.
-    default: "true"
-  delete_untracked_guides:
-    description: Remove guides from Hex when they are no longer tracked by the config file. Setting this to false is no longer supported.
-    deprecationMessage: delete_untracked_guides is deprecated. Guide pruning is now always enabled.
-    default: "true"
   comment_on_pr:
     description: |
       If true, comments on GitHub pull requests with a link to the context preview. Requires a `GITHUB_TOKEN` environment variable with the pull-requests: write permission.
@@ -22,9 +14,6 @@ inputs:
   hex_url:
     description: The URL of the Hex instance
     default: https://app.hex.tech
-  publish:
-    description: Publish resources automatically when the action runs on a push event. If false, a preview is created but not published.
-    default: "true"
 
 runs:
   using: node24
