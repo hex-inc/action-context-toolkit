@@ -8,9 +8,9 @@ This action currently supports uploading guide files, unstructured context that 
 
 ## Features
 
-- Selectively upload documents in a larger repo
-- Automatically publish and delete guides in Hex
-- Preview and test guide changes on pull requests
+- Selectively upload files in a larger repository
+- Preview and test changes on GitHub Pull Requests
+- Automatically reflect changes in Hex
 
 ## Usage
 
@@ -24,7 +24,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write # Used to comment on pull_requests
+  pull-requests: write
 
 jobs:
   publish_hex_context:
@@ -32,28 +32,48 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Upload guide files
+      - name: Upload context resources
         uses: hex-inc/action-context-toolkit@v2
         env:
-          GITHUB_TOKEN: ${{ github.token }} # Used to comment on pull_requests
+          GITHUB_TOKEN: ${{ github.token }}
         with:
-          config_file: hex_context.config.json
-          token: ${{ secrets.HEX_API_TOKEN }} # Create a workspace token with the Guides write scope and set this in your repository settings
-          # optional configuration
-          hex_url: https://app.hex.tech # by default, this is https://app.hex.tech - change if you have a single tenant hosted stack
-          comment_on_pr: true # To configure this, you must include a `GITHUB_TOKEN` in the env and ensure it has the pull-requests: write permission (see above).
+          token: ${{ secrets.HEX_API_TOKEN }}
+          comment_on_pr: true
 ```
 
-Which references a `hex_context.config.json` file.
+### Inputs
+
+`token`  
+_Required._  
+_A workspace token with the necessary scopes. This should be set in your GitHub repository settings in Secrets. This can be generated in your Hex Settings. The scopes are "Guides: Read, Guides: Write, Semantic layer sync", respective to what you are configuring._
+
+`config_file`
+_Optional. Defaults to_ `./hex_context.config.json`_._
+The path to a `hex_context.config.json` file.
+
+`hex_url`
+_Optional. Defaults to_ `https://app.hex.tech`_._
+For most Hex users, this will be `https://app.hex.tech`. For single tenant, EU multi tenant, and HIPAA multi tenant customers, replace `app.hex.tech` with your custom URL (e.g. `atreides.hex.tech`, `eu.hex.tech`).
+
+`comment_on_pr`
+_Optional. Defaults to_ `false`_._
+Whether to comment on pull requests with a summary of changes and a link to the context preview. Requires a `GITHUB_TOKEN` in the environment variables and the `pull-requests: write` permission (otherwise, can be omitted).
+
+## Configuration file
+
+The action uses a `hex_context.config.json` file to configure the resources to upload. This file is used to define the paths to your guides and semantic projects.
 
 ### Guides
 
-You can define paths to your guides in the following ways:
+There are 2 different ways to point to guides: paths or patterns.
 
-- `path` - the path to a guide file
-  - You can also specify `hexFilePath` if you want the path that shows up in Hex to be different to how your guides are structured in your repository
-- `pattern` - matches a pattern - e.g. (`guides/*.md` - matches .md files in a guides folder or `guides/**/*.md` - matches .md files in the guides folder, including sub-directories)
-  - You can also optionally specify a `transform` with `{ "stripFolders": true }` which will rewrite the path when uploaded to Hex to only include the file name (ignoring the folder path), e.g. folder1/folder2/guide.md -> guide.md
+- `path` - the path to a single file.
+  - `{ "path": "guides/arr.md" }`
+  - Optionally, specify `"hexFilePath"` if you want the path that shows up in Hex to be different than how the file is structured in your repository.
+- `pattern` - a glob that matches multiple files
+  - `{ "pattern": "guides/*.md" }` matches all `.md` files directly inside a `guides` folder.
+  - `{ "pattern": "guides/**/*.md" }` matches files in subdirectories.
+  - Optionally, specify `"transform": { "stripFolders": true }` to rewrite the uploaded path to only include the file name, ignoring the folder path (e.g. `folder1/folder2/guide.md` becomes `guide.md`).
 
 ### Semantic projects
 
@@ -95,10 +115,10 @@ You can sync semantic project definitions from your repository. Each entry requi
 
 ## Migrating from v1 to v2
 
-The action now installs and uses the Hex CLI automatically, so no additional installation step is required.
+The action now installs and uses the Hex CLI. No additional installation step is required.
 
-The `publish_guides` and `delete_untracked_guides` inputs have been removed.
+Add a `"semanticProjects"` key to your Hex context configuration file following the [instructions](#semantic-projects) above.
 
-Publishing now always occurs on push events to your default branches (usually `main` or `master`). Existing workflows that omit `publish` or set it to `true` will continue to work unchanged. Setting `publish` to `false` is no longer supported.
+(Breaking) The `publish_guides` input has been removed. Publishing now always occurs on push events to your default branch(es) (usually `main` or `master`). Existing workflows that omitted the input or set it to `true` will continue to work unchanged. A value of `false` is no longer supported.
 
-Guide pruning is now always enabled. Existing workflows that omit `delete_untracked_guides` or set it to `true` continue to work unchanged. Setting `delete_untracked_guides` to `false` is no longer supported.
+(Breaking) The `delete_untracked_guides` input has been removed. Guide pruning is now always enabled. Existing workflows that omitted the input or set it to `true` continue to work unchanged. A value to `false` is no longer supported.
