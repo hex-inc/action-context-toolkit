@@ -15,89 +15,92 @@ const envVars: ExpectedEnvVars = {
 
 describe("generateCommentBody", () => {
   test("renders added and modified guides", () => {
-    const body = generateCommentBody(
+    const body = generateCommentBody({
       envVars,
-      "https://app.hex.tech/preview/1",
-      [
+      previewLink: "https://app.hex.tech/preview/1",
+      guides: [
         {
-          originalFilePath: "guide.md",
-          hexFilePath: "guide.md",
-          id: "id1",
+          name: "guide.md",
           result: "created",
         },
         {
-          originalFilePath: "another-guide.md",
-          hexFilePath: "another-guide.md",
-          id: "id2",
+          name: "another-guide.md",
           result: "updated",
         },
       ],
-    );
+      semanticProjects: [],
+    });
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success - 1 guide added, 1 guide updated. [Test changes in Hex](https://app.hex.tech/preview/1).
+      🟢 Success. [Test changes in Hex](https://app.hex.tech/preview/1).
+      
+      **Guides**
 
+      1 added, 1 updated
 
       | Guide | Status | 
       |-------|--------|
-      | [guide.md](https://hex.tech/hex-inc/hex-inc/blob/1234567890/guide.md) | ⬆️ Added | 
-      | [another-guide.md](https://hex.tech/hex-inc/hex-inc/blob/1234567890/another-guide.md) | ✏️ Modified | 
+      | \`guide.md\` | ⬆️ Added | 
+      | \`another-guide.md\` | ✏️ Modified | 
       "
     `);
   });
 
-  test("shows preview link when no guide changes", () => {
-    const body = generateCommentBody(
+  test("shows preview link when changes are empty", () => {
+    const body = generateCommentBody({
       envVars,
-      "https://app.hex.tech/preview/3",
-      [],
-    );
+      previewLink: "https://app.hex.tech/preview/3",
+      guides: [],
+      semanticProjects: [],
+    });
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Context preview created. [Test changes in Hex](https://app.hex.tech/preview/3).
+      🟢 Success. [Test changes in Hex](https://app.hex.tech/preview/3).
       "
     `);
   });
 
-  test("shows preview link when guides is undefined", () => {
-    const body = generateCommentBody(envVars, "https://app.hex.tech/preview/4");
+  test("shows preview link when changes are undefined", () => {
+    const body = generateCommentBody({
+      envVars,
+      previewLink: "https://app.hex.tech/preview/4",
+      guides: undefined,
+      semanticProjects: undefined,
+    });
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Context preview created. [Test changes in Hex](https://app.hex.tech/preview/4).
+      🟢 Success. [Test changes in Hex](https://app.hex.tech/preview/4).
       "
     `);
   });
 
   test("renders warning column when a guide has warnings", () => {
-    const body = generateCommentBody(
+    const body = generateCommentBody({
       envVars,
-      "https://app.hex.tech/preview/5",
-      [
+      previewLink: "https://app.hex.tech/preview/5",
+      guides: [
         {
-          originalFilePath: "guides/warn.md",
-          hexFilePath: "guides/warn.md",
-          id: "id3",
+          name: "guides/warn.md",
           result: "updated",
           warnings: ["File is too large"],
         },
         {
-          originalFilePath: "guides/ok.md",
-          hexFilePath: "guides/ok.md",
-          id: "id4",
+          name: "guides/ok.md",
           result: "created",
         },
       ],
-    );
+      semanticProjects: [],
+    });
     expect(body).toContain("Warnings");
     expect(body).toContain("File is too large");
   });
 
   test("renders semantic projects table", () => {
-    const body = generateCommentBody(
+    const body = generateCommentBody({
       envVars,
-      "https://app.hex.tech/preview/6",
-      undefined,
-      [
+      previewLink: "https://app.hex.tech/preview/6",
+      guides: undefined,
+      semanticProjects: [
         {
           dirPath: "semantic/sales",
           result: {
@@ -113,34 +116,32 @@ describe("generateCommentBody", () => {
           },
         },
       ],
-    );
+    });
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Context preview created. [Test changes in Hex](https://app.hex.tech/preview/6).
+      🟢 Success. [Test changes in Hex](https://app.hex.tech/preview/6).
+      
+      **Semantic Projects**
 
-      **Semantic projects**
-
-      | Name | Directory | Status |
-      |------|-----------|--------|
-      | Sales Model | semantic/sales | ✅ OK |
-      | Broken Model | semantic/broken | ⚠️ 1 problem |
+      | Name | Status |
+      |------|--------|
+      | Sales Model | ✅ OK |
+      | Broken Model | ⚠️ 1 problem |
       "
     `);
   });
 
   test("renders guides and semantic projects together", () => {
-    const body = generateCommentBody(
+    const body = generateCommentBody({
       envVars,
-      "https://app.hex.tech/preview/7",
-      [
+      previewLink: "https://app.hex.tech/preview/7",
+      guides: [
         {
-          originalFilePath: "guide.md",
-          hexFilePath: "guide.md",
-          id: "id1",
+          name: "guide.md",
           result: "created",
         },
       ],
-      [
+      semanticProjects: [
         {
           dirPath: "semantic/sales",
           result: {
@@ -149,9 +150,25 @@ describe("generateCommentBody", () => {
           },
         },
       ],
-    );
-    expect(body).toContain("1 guide added");
-    expect(body).toContain("Sales Model");
-    expect(body).toContain("✅ OK");
+    });
+    expect(body).toMatchInlineSnapshot(`
+      "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
+      🟢 Success. [Test changes in Hex](https://app.hex.tech/preview/7).
+
+      **Guides**
+
+      1 added
+
+      | Guide | Status | 
+      |-------|--------|
+      | \`guide.md\` | ⬆️ Added | 
+
+      **Semantic Projects**
+      
+      | Name | Status |
+      |------|--------|
+      | Sales Model | ✅ OK |
+      "
+    `);
   });
 });
