@@ -15,103 +15,67 @@ const getOriginalFileLink = (
   ).toString();
 };
 
-const getTableHeaders = (showWarningColumn: boolean) => {
-  return `| Guide | Status | ${showWarningColumn ? "Warnings | " : ""}
-|-------|--------|${showWarningColumn ? "------|" : ""}`;
-};
-
-const getSemanticProjectsTableHeaders = () =>
-  `| Name | Directory | Status |
-|------|-----------|--------|`;
-
 const replaceNewlinesWithBreaks = (text: string) =>
   text.replace(/\n/g, "<br />");
 
-export const generateCommentBody = (
-  envVars: ExpectedEnvVars,
-  previewLink: string,
-  guides?: CliGuideResult,
-  semanticProjects?: CliSemanticProjectResult[],
-): string => {
-  const upserted = guides?.upserted ?? [];
-  const removed = guides?.removed ?? [];
+export const generateCommentBody = (params: {
+  envVars: ExpectedEnvVars;
+  previewLink: string;
+  guides: CliGuideResult[] | undefined;
+  semanticProjects: CliSemanticProjectResult[] | undefined;
+}) => {
+  // envVars not used rn, but hoping to in the near future
+  const { previewLink, guides, semanticProjects } = params;
 
-  const numberOfAdded = upserted.filter((g) => g.result === "created").length;
-  const numberOfUpdated = upserted.filter((g) => g.result === "updated").length;
-  const numberOfDeleted = removed.length;
-
-  const summary: string[] = [];
-  if (numberOfAdded > 0)
-    summary.push(
-      `${numberOfAdded === 1 ? "1 guide" : `${numberOfAdded} guides`} added`,
-    );
-  if (numberOfUpdated > 0)
-    summary.push(
-      `${numberOfUpdated === 1 ? "1 guide" : `${numberOfUpdated} guides`} updated`,
-    );
-  if (numberOfDeleted > 0)
-    summary.push(
-      `${numberOfDeleted === 1 ? "1 guide" : `${numberOfDeleted} guides`} deleted`,
-    );
-
-  const hasAnyWarnings = upserted.some((g) => (g.warnings?.length ?? 0) > 0);
-
-  const rows: string[] = [
-    ...upserted.map((guide) => {
-      const guideColumn = `[${guide.originalFilePath}](${getOriginalFileLink(envVars, guide.originalFilePath)})`;
-      const statusColumn =
-        guide.result === "created" ? "⬆️ Added" : "✏️ Modified";
-      const warningsColumn = hasAnyWarnings
-        ? guide.warnings && guide.warnings.length > 0
-          ? `<details><summary>⚠️ Warnings (${guide.warnings.length})</summary><pre>${guide.warnings.map(replaceNewlinesWithBreaks).join("<br />")}</pre></details>`
-          : ""
-        : "";
-      return `| ${guideColumn} | ${statusColumn} | ${hasAnyWarnings ? `${warningsColumn} |` : ""}`;
-    }),
-    ...removed.map(
-      (filePath) =>
-        `| ~~\`${filePath}\`~~ | ❌ Deleted |${hasAnyWarnings ? " |" : ""}`,
-    ),
-  ];
-
-  const hasChanges = upserted.length > 0 || removed.length > 0;
-  const summaryLine =
-    summary.length > 0
-      ? `🟢 Success - ${summary.join(", ")}. [Test changes in Hex](${previewLink}).`
-      : `🟢 Context preview created. [Test changes in Hex](${previewLink}).`;
+  const topLine = `🟢 Success. [Test changes in Hex](${previewLink}).`;
 
   // Two \n before the table header restores the double blank line from the original format.
-  const guidesSection = hasChanges
-    ? `\n\n${getTableHeaders(hasAnyWarnings)}\n${rows.join("\n")}\n`
-    : "";
+  let guidesSection = "";
+  if (guides && guides.length > 0) {
+    const added = guides?.filter((g) => g.result === "created").length ?? 0;
+    const updated = guides?.filter((g) => g.result === "updated").length ?? 0;
+    const deleted = guides?.filter((g) => g.result === "deleted").length ?? 0;
+    const warnings = guides.reduce(
+      (acc, g) => acc + (g.warnings?.length ?? 0),
+      0,
+    );
+    const heading = getGuidesHeading({
+      added,
+      updated,
+      deleted,
+      warnings,
+    });
+    const hasAnyWarnings = warnings > 0;
+    const tableHeaders = getGuidesTableHeaders(hasAnyWarnings);
+    const tableRows = guides.map((guide) =>
+      generateGuideRow({
+        result: guide,
+        hasAnyWarnings,
+      }),
+    );
+    guidesSection = `\n${heading}\n\n${tableHeaders}\n${tableRows.join("\n")}\n`;
+  }
 
-  const semanticProjectsSection =
-    semanticProjects && semanticProjects.length > 0
-      ? `\n**Semantic projects**\n\n${getSemanticProjectsTableHeaders()}\n${semanticProjects
-          .map((sp) => {
-            const problemCount = sp.result.details.problems?.length ?? 0;
-            const warningCount = sp.result.details.warnings?.length ?? 0;
-            const status =
-              problemCount > 0
-                ? `⚠️ ${problemCount} ${problemCount === 1 ? "problem" : "problems"}`
-                : warningCount > 0
-                  ? `⚠️ ${warningCount} ${warningCount === 1 ? "warning" : "warnings"}`
-                  : "✅ OK";
-            return `| ${sp.result.semanticProject.name} | ${sp.dirPath} | ${status} |`;
-          })
-          .join("\n")}\n`
-      : "";
+  let semanticProjectsSection = "";
+  if (semanticProjects && semanticProjects.length > 0) {
+    const heading = getSemanticProjectsHeading();
+    const tableHeaders = getSemanticProjectsTableHeaders();
+    const tableRows = semanticProjects.map((sp) =>
+      getSemanticProjectResultRow({ result: sp }),
+    );
+    semanticProjectsSection = `\n${heading}\n\n${tableHeaders}\n${tableRows.join("\n")}\n`;
+  }
 
   return `${HEX_COMMENT_IDENTIFIER}
-${summaryLine}
+${topLine}
 ${guidesSection}${semanticProjectsSection}`;
 };
 
 export const commentOnPullRequest = async (params: {
   envVars: ExpectedEnvVars & { type: "pull_request" };
   previewLink: string;
-  guides?: CliGuideResult;
-  semanticProjects?: CliSemanticProjectResult[];
+  guides: CliGuideResult[] | undefined;
+  semanticProjects: CliSemanticProjectResult[] | undefined;
 }) => {
   const { envVars, previewLink, guides, semanticProjects } = params;
 
@@ -126,12 +90,12 @@ export const commentOnPullRequest = async (params: {
     );
   }
 
-  const body = generateCommentBody(
+  const body = generateCommentBody({
     envVars,
     previewLink,
     guides,
     semanticProjects,
-  );
+  });
   const { owner, repo } = envVars;
   const octokit = github.getOctokit(envVars.token);
 
@@ -174,3 +138,94 @@ export const commentOnPullRequest = async (params: {
     core.info("Created Hex context preview comment on pull request.");
   }
 };
+
+function getGuidesHeading(params: {
+  added: number;
+  updated: number;
+  deleted: number;
+  warnings: number;
+}): string {
+  const addedStr = params.added > 0 ? `${params.added} added` : "";
+  const updatedStr = params.updated > 0 ? `${params.updated} updated` : "";
+  const deletedStr = params.deleted > 0 ? `${params.deleted} deleted` : "";
+  const warningsStr =
+    params.warnings > 0 ? maybePluralizePhrase(params.warnings, "warning") : "";
+  const strs = [addedStr, updatedStr, deletedStr, warningsStr].filter(Boolean);
+  return `
+**Guides**
+
+${strs.join(", ")}
+`.trim();
+}
+
+const getGuidesTableHeaders = (showWarningColumn: boolean) => {
+  return `| Guide | Status | ${showWarningColumn ? "Warnings | " : ""}
+|-------|--------|${showWarningColumn ? "------|" : ""}`;
+};
+
+const generateGuideRow = (params: {
+  result: CliGuideResult;
+  hasAnyWarnings: boolean;
+}) => {
+  const { result, hasAnyWarnings } = params;
+
+  const guideColumn = `\`${result.name}\``;
+
+  let statusColumn: string;
+  if (result.result === "created") {
+    statusColumn = "⬆️ Added";
+  } else if (result.result === "updated") {
+    statusColumn = "✏️ Modified";
+  } else if (result.result === "deleted") {
+    statusColumn = "❌ Deleted";
+  } else {
+    statusColumn = "No change";
+  }
+
+  const warningsColumn = hasAnyWarnings
+    ? result.warnings && result.warnings.length > 0
+      ? `<details><summary>⚠️ Warnings (${result.warnings.length})</summary><pre>${result.warnings.map(replaceNewlinesWithBreaks).join("<br />")}</pre></details>`
+      : ""
+    : "";
+  return `| ${guideColumn} | ${statusColumn} | ${hasAnyWarnings ? `${warningsColumn} |` : ""}`;
+};
+
+function getSemanticProjectsHeading(): string {
+  return "**Semantic Projects**";
+}
+
+const getSemanticProjectsTableHeaders = () =>
+  `| Name | Status |
+|------|--------|`;
+
+const getSemanticProjectResultRow = (params: {
+  result: CliSemanticProjectResult;
+}) => {
+  const result = params.result.result;
+
+  const problemCount = result.details.problems?.length ?? 0;
+  const warningCount = result.details.warnings?.length ?? 0;
+  const status =
+    problemCount > 0
+      ? `⚠️ ${problemCount} ${problemCount === 1 ? "problem" : "problems"}`
+      : warningCount > 0
+        ? `⚠️ ${warningCount} ${warningCount === 1 ? "warning" : "warnings"}`
+        : "✅ OK";
+  return `| ${result.semanticProject.name} | ${status} |`;
+};
+
+function maybePluralize(
+  length: number,
+  singular: string,
+  plural: string = singular + "s",
+): string {
+  return length === 1 ? singular : plural;
+}
+
+function maybePluralizePhrase(
+  length: number,
+  singular: string,
+  plural?: string,
+): string {
+  return `${length} ${maybePluralize(length, singular, plural)}`;
+}
