@@ -1,4 +1,6 @@
-banner
+<!-- markdownlint-disable MD041 -->
+
+![banner](docs/GuideSyncBanner.png)
 
 # Hex Action context toolkit
 
