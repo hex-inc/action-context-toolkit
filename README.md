@@ -1,4 +1,4 @@
-![banner](docs/GuideSyncBanner.png)
+banner
 
 # Hex Action context toolkit
 
@@ -48,12 +48,12 @@ _Required._
 _A workspace token with the necessary scopes. This should be set in your GitHub repository settings in Secrets. This can be generated in your Hex Settings. The scopes are "Guides: Read, Guides: Write, Semantic layer sync", respective to what you are configuring._
 
 `config_file`
-_Optional. Defaults to_ `./hex_context.config.json`_._
-The path to a `hex_context.config.json` file.
+_Optional. Defaults to_ `./hex_context.config.json`_._  
+The path to a context configuration file.
 
 `hex_url`
 _Optional. Defaults to_ `https://app.hex.tech`_._
-For most Hex users, this will be `https://app.hex.tech`. For single tenant, EU multi tenant, and HIPAA multi tenant customers, replace `app.hex.tech` with your custom URL (e.g. `atreides.hex.tech`, `eu.hex.tech`).
+The base URL for your Hex workspace. For most Hex users, this will be `https://app.hex.tech`. For single tenant, EU multi tenant, and HIPAA multi tenant customers, replace `app.hex.tech` with your custom URL (e.g. `atreides.hex.tech`, `eu.hex.tech`).
 
 `comment_on_pr`
 _Optional. Defaults to_ `false`_._
