@@ -29,5 +29,5 @@ export type CliContextPreviewResult = {
   previewId: string;
   previewLink: string;
   guides: CliGuideResult[];
-  semanticModels: CliSemanticProjectResult[];
+  semanticProjects: CliSemanticProjectResult[];
 };
