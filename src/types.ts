@@ -25,9 +25,23 @@ export type CliSemanticProjectResult = {
   };
 };
 
+export type CliEvalSuiteResult = {
+  path: string;
+  previewId: string;
+  evalSuite: {
+    id: string;
+    publicIdentifier: string;
+  };
+  evalSuiteVersion: {
+    id: string;
+  };
+  result: "created" | "noop" | "updated";
+};
+
 export type CliContextPreviewResult = {
   previewId: string;
   previewLink: string;
   guides: CliGuideResult[];
   semanticProjects: CliSemanticProjectResult[];
+  evalSuites?: CliEvalSuiteResult[];
 };

@@ -1,19 +1,17 @@
 import * as github from "@actions/github";
 import * as core from "@actions/core";
 import { ExpectedEnvVars } from "../env";
-import { CliGuideResult, CliSemanticProjectResult } from "../types";
+import {
+  CliEvalSuiteResult,
+  CliGuideResult,
+  CliSemanticProjectResult,
+} from "../types";
 
 const HEX_COMMENT_IDENTIFIER = `<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->`;
-
-const getOriginalFileLink = (
-  envVars: ExpectedEnvVars,
-  originalFilePath: string,
-) => {
-  return new URL(
-    `${envVars.owner}/${envVars.repo}/blob/${envVars.sha}/${originalFilePath}`,
-    envVars.baseUrl,
-  ).toString();
-};
+const ADDED = "⬆️ Added";
+const UPDATED = "✏️ Modified";
+const DELETED = "❌ Deleted";
+const NO_CHANGE = "No change";
 
 const replaceNewlinesWithBreaks = (text: string) =>
   text.replace(/\n/g, "<br />");
@@ -23,9 +21,10 @@ export const generateCommentBody = (params: {
   previewLink: string;
   guides: CliGuideResult[] | undefined;
   semanticProjects: CliSemanticProjectResult[] | undefined;
+  evalSuites: CliEvalSuiteResult[] | undefined;
 }) => {
   // envVars not used rn, but hoping to in the near future
-  const { previewLink, guides, semanticProjects } = params;
+  const { previewLink, guides, semanticProjects, evalSuites } = params;
 
   const topLine = `🟢 Success. [Test changes in Hex](${previewLink}).`;
 
@@ -66,9 +65,19 @@ export const generateCommentBody = (params: {
     semanticProjectsSection = `\n${heading}\n\n${tableHeaders}\n${tableRows.join("\n")}\n`;
   }
 
+  let evalSuitesSection = "";
+  if (evalSuites && evalSuites.length > 0) {
+    const heading = getEvalSuitesHeading();
+    const tableHeaders = getEvalSuitesTableHeaders();
+    const tableRows = evalSuites.map((es) =>
+      getEvalSuiteResultRow({ result: es }),
+    );
+    evalSuitesSection = `\n${heading}\n\n${tableHeaders}\n${tableRows.join("\n")}\n`;
+  }
+
   return `${HEX_COMMENT_IDENTIFIER}
 ${topLine}
-${guidesSection}${semanticProjectsSection}`;
+${guidesSection}${semanticProjectsSection}${evalSuitesSection}`;
 };
 
 export const commentOnPullRequest = async (params: {
@@ -76,8 +85,9 @@ export const commentOnPullRequest = async (params: {
   previewLink: string;
   guides: CliGuideResult[] | undefined;
   semanticProjects: CliSemanticProjectResult[] | undefined;
+  evalSuites: CliEvalSuiteResult[] | undefined;
 }) => {
-  const { envVars, previewLink, guides, semanticProjects } = params;
+  const { envVars, previewLink, guides, semanticProjects, evalSuites } = params;
 
   if (!envVars.token) {
     throw new Error(
@@ -95,6 +105,7 @@ export const commentOnPullRequest = async (params: {
     previewLink,
     guides,
     semanticProjects,
+    evalSuites,
   });
   const { owner, repo } = envVars;
   const octokit = github.getOctokit(envVars.token);
@@ -173,13 +184,13 @@ const generateGuideRow = (params: {
 
   let statusColumn: string;
   if (result.result === "created") {
-    statusColumn = "⬆️ Added";
+    statusColumn = ADDED;
   } else if (result.result === "updated") {
-    statusColumn = "✏️ Modified";
+    statusColumn = UPDATED;
   } else if (result.result === "deleted") {
-    statusColumn = "❌ Deleted";
+    statusColumn = DELETED;
   } else {
-    statusColumn = "No change";
+    statusColumn = NO_CHANGE;
   }
 
   const warningsColumn = hasAnyWarnings
@@ -212,6 +223,26 @@ const getSemanticProjectResultRow = (params: {
         ? `⚠️ ${warningCount} ${warningCount === 1 ? "warning" : "warnings"}`
         : "✅ OK";
   return `| ${result.semanticProject.name} | ${status} |`;
+};
+
+function getEvalSuitesHeading(): string {
+  return "**Eval Suites**";
+}
+
+const getEvalSuitesTableHeaders = () =>
+  `| Name | Status |
+|------|--------|`;
+
+const getEvalSuiteResultRow = (params: { result: CliEvalSuiteResult }) => {
+  const result = params.result;
+  const status =
+    result.result === "created"
+      ? ADDED
+      : result.result === "updated"
+        ? UPDATED
+        : NO_CHANGE;
+
+  return `| ${result.evalSuite.publicIdentifier} | ${status} |`;
 };
 
 function maybePluralize(
