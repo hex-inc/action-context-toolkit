@@ -5,6 +5,7 @@
       "version": "20.19",
       "disable_plugin": true
     },
+    "gh": "latest",
     "git": "latest"
   }
 }
