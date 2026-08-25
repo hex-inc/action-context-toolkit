@@ -47,7 +47,13 @@ async function run() {
   });
 
   const previewResult = JSON.parse(previewStdout) as CliContextPreviewResult;
-  const { previewId, previewLink, guides, semanticProjects } = previewResult;
+  const {
+    preview_id: previewId,
+    preview_link: previewLink,
+    guides,
+    semanticProjects,
+    evalSuites,
+  } = previewResult;
 
   if (!previewId || !previewLink) {
     throw new Error(
@@ -71,6 +77,7 @@ async function run() {
         previewLink,
         guides,
         semanticProjects,
+        evalSuites,
       });
     } else {
       core.info(
