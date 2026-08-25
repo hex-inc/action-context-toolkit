@@ -1,6 +1,44 @@
 {
   "lockfile_version": "1",
   "packages": {
+    "gh@latest": {
+      "last_modified": "2026-08-12T11:28:58Z",
+      "resolved": "github:NixOS/nixpkgs/044bfe75bfe4c7bbe043dc17b5e42ea823b84a09#gh",
+      "source": "devbox-search",
+      "version": "2.97.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ah2ixwwf58zsa56jwgalvbrajgyd92jm-gh-2.97.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/ah2ixwwf58zsa56jwgalvbrajgyd92jm-gh-2.97.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/7zsgkk9cy34n46hy72g2jqcv4fzfgl3i-gh-2.97.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/7zsgkk9cy34n46hy72g2jqcv4fzfgl3i-gh-2.97.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/2sy0iwq5r6ha7kj3nax1wdcsh4kf4jai-gh-2.97.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/2sy0iwq5r6ha7kj3nax1wdcsh4kf4jai-gh-2.97.0"
+        }
+      }
+    },
     "git@latest": {
       "last_modified": "2026-06-27T07:37:20Z",
       "resolved": "github:NixOS/nixpkgs/3d46470bb3030020f7e1361f33514854f5bfa86d#git",

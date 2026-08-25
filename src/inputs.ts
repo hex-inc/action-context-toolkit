@@ -29,8 +29,14 @@ export const getInputs = async (): Promise<Inputs> => {
     );
   }
 
-  if (!configFile.endsWith(".json")) {
-    errors.push(`Expected a .json config file, got: ${configFile}`);
+  if (
+    !configFile.endsWith(".json") &&
+    !configFile.endsWith(".yml") &&
+    !configFile.endsWith(".yaml")
+  ) {
+    errors.push(
+      `Expected a .json, .yml or .yaml config file, got: ${configFile}`,
+    );
   }
 
   if (errors.length > 0) {
