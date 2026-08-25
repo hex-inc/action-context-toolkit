@@ -58,7 +58,7 @@ describe("generateCommentBody", () => {
     expect(body).toBeNull();
   });
 
-  test("does not generate a commentwhen changes are undefined", () => {
+  test("does not generate a comment when changes are undefined", () => {
     const body = generateCommentBody({
       envVars,
       previewLink: "https://app.hex.tech/preview/4",
