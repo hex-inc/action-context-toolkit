@@ -29,6 +29,7 @@ describe("generateCommentBody", () => {
         },
       ],
       semanticProjects: [],
+      evalSuites: [],
     });
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
@@ -46,32 +47,26 @@ describe("generateCommentBody", () => {
     `);
   });
 
-  test("shows preview link when changes are empty", () => {
+  test("does not generate a comment when changes are empty", () => {
     const body = generateCommentBody({
       envVars,
       previewLink: "https://app.hex.tech/preview/3",
       guides: [],
       semanticProjects: [],
+      evalSuites: [],
     });
-    expect(body).toMatchInlineSnapshot(`
-      "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success. [Test changes in Hex](https://app.hex.tech/preview/3).
-      "
-    `);
+    expect(body).toBeNull();
   });
 
-  test("shows preview link when changes are undefined", () => {
+  test("does not generate a commentwhen changes are undefined", () => {
     const body = generateCommentBody({
       envVars,
       previewLink: "https://app.hex.tech/preview/4",
       guides: undefined,
       semanticProjects: undefined,
+      evalSuites: undefined,
     });
-    expect(body).toMatchInlineSnapshot(`
-      "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success. [Test changes in Hex](https://app.hex.tech/preview/4).
-      "
-    `);
+    expect(body).toBeNull();
   });
 
   test("renders warning column when a guide has warnings", () => {
@@ -90,6 +85,7 @@ describe("generateCommentBody", () => {
         },
       ],
       semanticProjects: [],
+      evalSuites: [],
     });
     expect(body).toContain("Warnings");
     expect(body).toContain("File is too large");
@@ -116,6 +112,7 @@ describe("generateCommentBody", () => {
           },
         },
       ],
+      evalSuites: [],
     });
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
@@ -131,7 +128,7 @@ describe("generateCommentBody", () => {
     `);
   });
 
-  test("renders guides and semantic projects together", () => {
+  test("renders guides, semantic projects, and eval suites together", () => {
     const body = generateCommentBody({
       envVars,
       previewLink: "https://app.hex.tech/preview/7",
@@ -150,6 +147,22 @@ describe("generateCommentBody", () => {
           },
         },
       ],
+      evalSuites: [
+        {
+          path: "eval-suites/eval-suite.md",
+          result: {
+            previewId: "1234567890",
+            evalSuite: {
+              id: "1234567890",
+              publicIdentifier: "eval-suite-123",
+            },
+            evalSuiteVersion: {
+              id: "1234567890",
+            },
+            result: "created",
+          },
+        },
+      ],
     });
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
@@ -164,10 +177,16 @@ describe("generateCommentBody", () => {
       | \`guide.md\` | ⬆️ Added | 
 
       **Semantic Projects**
-      
+
       | Name | Status |
       |------|--------|
       | Sales Model | ✅ OK |
+
+      **Eval Suites**
+
+      | Name | Status |
+      |------|--------|
+      | eval-suite-123 | ⬆️ Added |
       "
     `);
   });
