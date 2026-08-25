@@ -22,11 +22,9 @@ export const generateCommentBody = (params: {
   guides: CliGuideResult[] | undefined;
   semanticProjects: CliSemanticProjectResult[] | undefined;
   evalSuites: CliEvalSuiteResult[] | undefined;
-}) => {
+}): string | null => {
   // envVars not used rn, but hoping to in the near future
   const { previewLink, guides, semanticProjects, evalSuites } = params;
-
-  const topLine = `🟢 Success. [Test changes in Hex](${previewLink}).`;
 
   // Two \n before the table header restores the double blank line from the original format.
   let guidesSection = "";
@@ -75,6 +73,16 @@ export const generateCommentBody = (params: {
     evalSuitesSection = `\n${heading}\n\n${tableHeaders}\n${tableRows.join("\n")}\n`;
   }
 
+  if (
+    guidesSection === "" &&
+    semanticProjectsSection === "" &&
+    evalSuitesSection === ""
+  ) {
+    return null;
+  }
+
+  const topLine = `🟢 Success. [Test changes in Hex](${previewLink}).`;
+
   return `${HEX_COMMENT_IDENTIFIER}
 ${topLine}
 ${guidesSection}${semanticProjectsSection}${evalSuitesSection}`;
@@ -107,6 +115,9 @@ export const commentOnPullRequest = async (params: {
     semanticProjects,
     evalSuites,
   });
+  if (!body) {
+    return;
+  }
   const { owner, repo } = envVars;
   const octokit = github.getOctokit(envVars.token);
 
