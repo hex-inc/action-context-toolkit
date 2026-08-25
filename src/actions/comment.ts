@@ -234,7 +234,7 @@ const getEvalSuitesTableHeaders = () =>
 |------|--------|`;
 
 const getEvalSuiteResultRow = (params: { result: CliEvalSuiteResult }) => {
-  const result = params.result;
+  const { result } = params.result;
   const status =
     result.result === "created"
       ? ADDED
