@@ -18,13 +18,15 @@ const replaceNewlinesWithBreaks = (text: string) =>
 
 export const generateCommentBody = (params: {
   envVars: ExpectedEnvVars;
+  previewId: string;
   previewLink: string;
   guides: CliGuideResult[] | undefined;
   semanticProjects: CliSemanticProjectResult[] | undefined;
   evalSuites: CliEvalSuiteResult[] | undefined;
 }): string | null => {
   // envVars not used rn, but hoping to in the near future
-  const { previewLink, guides, semanticProjects, evalSuites } = params;
+  const { previewId, previewLink, guides, semanticProjects, evalSuites } =
+    params;
 
   // Two \n before the table header restores the double blank line from the original format.
   let guidesSection = "";
@@ -81,21 +83,32 @@ export const generateCommentBody = (params: {
     return null;
   }
 
-  const topLine = `🟢 Success. [Test changes in Hex](${previewLink}).`;
+  const topLine = `🟢 Success. [Test changes or run evals in Hex](${previewLink}).`;
+
+  const bottomLine = `ℹ️ Use the [Hex CLI](https://learn.hex.tech/docs/api-integrations/cli) to create a test thread (\`hex thread create <prompt> --preview-id ${previewId}\`) or run evals against this preview (\`hex eval run --suite-id <suite-id> --preview-id ${previewId}\`)`;
 
   return `${HEX_COMMENT_IDENTIFIER}
 ${topLine}
-${guidesSection}${semanticProjectsSection}${evalSuitesSection}`;
+${guidesSection}${semanticProjectsSection}${evalSuitesSection}
+${bottomLine}`;
 };
 
 export const commentOnPullRequest = async (params: {
   envVars: ExpectedEnvVars & { type: "pull_request" };
+  previewId: string;
   previewLink: string;
   guides: CliGuideResult[] | undefined;
   semanticProjects: CliSemanticProjectResult[] | undefined;
   evalSuites: CliEvalSuiteResult[] | undefined;
 }) => {
-  const { envVars, previewLink, guides, semanticProjects, evalSuites } = params;
+  const {
+    envVars,
+    previewId,
+    previewLink,
+    guides,
+    semanticProjects,
+    evalSuites,
+  } = params;
 
   if (!envVars.token) {
     throw new Error(
@@ -110,6 +123,7 @@ export const commentOnPullRequest = async (params: {
 
   const body = generateCommentBody({
     envVars,
+    previewId,
     previewLink,
     guides,
     semanticProjects,
