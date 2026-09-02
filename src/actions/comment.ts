@@ -85,7 +85,12 @@ export const generateCommentBody = (params: {
 
   const topLine = `🟢 Success. [Test changes or run evals in Hex](${previewLink}).`;
 
-  const bottomLine = `ℹ️ Use the [Hex CLI](https://learn.hex.tech/docs/api-integrations/cli) to create a test thread (\`hex thread create <prompt> --preview-id ${previewId}\`) or run evals against this preview (\`hex eval run --suite-id <suite-id> --preview-id ${previewId}\`)`;
+  const bottomLine = `<details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
+
+- Create a test thread \`hex thread create <prompt> --preview-id ${previewId}\`
+- Run evals against this preview \`hex eval run --suite-id <suite-id> --preview-id ${previewId}\`
+
+</details>`;
 
   return `${HEX_COMMENT_IDENTIFIER}
 ${topLine}

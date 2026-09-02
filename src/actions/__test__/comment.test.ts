@@ -45,7 +45,12 @@ describe("generateCommentBody", () => {
       | \`guide.md\` | ⬆️ Added | 
       | \`another-guide.md\` | ✏️ Modified | 
 
-      ℹ️ Use the [Hex CLI](https://learn.hex.tech/docs/api-integrations/cli) to create a test thread (\`hex thread create <prompt> --preview-id 1\`) or run evals against this preview (\`hex eval run --suite-id <suite-id> --preview-id 1\`)"
+      <details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
+
+      - Create a test thread \`hex thread create <prompt> --preview-id 1\`
+      - Run evals against this preview \`hex eval run --suite-id <suite-id> --preview-id 1\`
+
+      </details>"
     `);
   });
 
@@ -131,7 +136,12 @@ describe("generateCommentBody", () => {
       | Sales Model | ✅ OK |
       | Broken Model | ⚠️ 1 problem |
 
-      ℹ️ Use the [Hex CLI](https://learn.hex.tech/docs/api-integrations/cli) to create a test thread (\`hex thread create <prompt> --preview-id 6\`) or run evals against this preview (\`hex eval run --suite-id <suite-id> --preview-id 6\`)"
+      <details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
+
+      - Create a test thread \`hex thread create <prompt> --preview-id 6\`
+      - Run evals against this preview \`hex eval run --suite-id <suite-id> --preview-id 6\`
+
+      </details>"
     `);
   });
 
@@ -196,7 +206,12 @@ describe("generateCommentBody", () => {
       |------|--------|
       | eval-suite-123 | ⬆️ Added |
 
-      ℹ️ Use the [Hex CLI](https://learn.hex.tech/docs/api-integrations/cli) to create a test thread (\`hex thread create <prompt> --preview-id 7\`) or run evals against this preview (\`hex eval run --suite-id <suite-id> --preview-id 7\`)"
+      <details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
+
+      - Create a test thread \`hex thread create <prompt> --preview-id 7\`
+      - Run evals against this preview \`hex eval run --suite-id <suite-id> --preview-id 7\`
+
+      </details>"
     `);
   });
 });

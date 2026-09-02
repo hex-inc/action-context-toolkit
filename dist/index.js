@@ -66,7 +66,12 @@ ${l}
 ${u}
 ${h.join(`
 `)}
-`}if(n===""&&i===""&&a==="")return null;let c=`\u{1F7E2} Success. [Test changes or run evals in Hex](${A}).`,g=`\u2139\uFE0F Use the [Hex CLI](https://learn.hex.tech/docs/api-integrations/cli) to create a test thread (\`hex thread create <prompt> --preview-id ${e}\`) or run evals against this preview (\`hex eval run --suite-id <suite-id> --preview-id ${e}\`)`;return`${ap}
+`}if(n===""&&i===""&&a==="")return null;let c=`\u{1F7E2} Success. [Test changes or run evals in Hex](${A}).`,g=`<details><summary>\u2139\uFE0F Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
+
+- Create a test thread \`hex thread create <prompt> --preview-id ${e}\`
+- Run evals against this preview \`hex eval run --suite-id <suite-id> --preview-id ${e}\`
+
+</details>`;return`${ap}
 ${c}
 ${n}${i}${a}
 ${g}`},up=async t=>{let{envVars:e,previewId:A,previewLink:r,guides:s,semanticProjects:o,evalSuites:n}=t;if(!e.token)throw new Error("GITHUB_TOKEN is not set, cannot comment on pull requests. Please ensure the GITHUB_TOKEN environment variable is set.");if(!e.pullRequestNumber)throw new Error("Could not detect pull request number, cannot create comment on this pull request.");let i=VM({envVars:e,previewId:A,previewLink:r,guides:s,semanticProjects:o,evalSuites:n});if(!i)return;let{owner:a,repo:c}=e,g=ip(e.token),l;for await(let{data:u}of g.paginate.iterator(g.rest.issues.listComments,{owner:a,repo:c,issue_number:e.pullRequestNumber,per_page:100})){let h=u.find(E=>E.body?.includes(ap));if(h){l=h.id;break}}l?(await g.rest.issues.updateComment({owner:a,repo:c,issue_number:e.pullRequestNumber,comment_id:l,body:i}),ht("Updated existing Hex context preview comment on pull request.")):(await g.rest.issues.createComment({owner:a,repo:c,issue_number:e.pullRequestNumber,body:i}),ht("Created Hex context preview comment on pull request."))};function qM(t){let e=t.added>0?`${t.added} added`:"",A=t.updated>0?`${t.updated} updated`:"",r=t.deleted>0?`${t.deleted} deleted`:"",s=t.warnings>0?AL(t.warnings,"warning"):"";return`
