@@ -14,6 +14,11 @@ inputs:
   hex_url:
     description: The URL of the Hex instance
     default: https://app.hex.tech
+outputs:
+  preview_id:
+    description: The ID of the preview
+  preview_link:
+    description: The link to the preview
 
 runs:
   using: node24
