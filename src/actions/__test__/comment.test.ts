@@ -17,6 +17,7 @@ describe("generateCommentBody", () => {
   test("renders added and modified guides", () => {
     const body = generateCommentBody({
       envVars,
+      previewId: "1",
       previewLink: "https://app.hex.tech/preview/1",
       guides: [
         {
@@ -33,8 +34,8 @@ describe("generateCommentBody", () => {
     });
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success. [Test changes in Hex](https://app.hex.tech/preview/1).
-      
+      🟢 Success. [Test changes or run evals in Hex](https://app.hex.tech/preview/1).
+
       **Guides**
 
       1 added, 1 updated
@@ -43,13 +44,20 @@ describe("generateCommentBody", () => {
       |-------|--------|
       | \`guide.md\` | ⬆️ Added | 
       | \`another-guide.md\` | ✏️ Modified | 
-      "
+
+      <details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
+
+      - Create a test thread \`hex thread create <prompt> --preview-id 1\`
+      - Run evals against this preview \`hex eval run --suite-id <suite-id> --preview-id 1\`
+
+      </details>"
     `);
   });
 
   test("does not generate a comment when changes are empty", () => {
     const body = generateCommentBody({
       envVars,
+      previewId: "3",
       previewLink: "https://app.hex.tech/preview/3",
       guides: [],
       semanticProjects: [],
@@ -61,6 +69,7 @@ describe("generateCommentBody", () => {
   test("does not generate a comment when changes are undefined", () => {
     const body = generateCommentBody({
       envVars,
+      previewId: "4",
       previewLink: "https://app.hex.tech/preview/4",
       guides: undefined,
       semanticProjects: undefined,
@@ -72,6 +81,7 @@ describe("generateCommentBody", () => {
   test("renders warning column when a guide has warnings", () => {
     const body = generateCommentBody({
       envVars,
+      previewId: "5",
       previewLink: "https://app.hex.tech/preview/5",
       guides: [
         {
@@ -94,6 +104,7 @@ describe("generateCommentBody", () => {
   test("renders semantic projects table", () => {
     const body = generateCommentBody({
       envVars,
+      previewId: "6",
       previewLink: "https://app.hex.tech/preview/6",
       guides: undefined,
       semanticProjects: [
@@ -116,21 +127,28 @@ describe("generateCommentBody", () => {
     });
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success. [Test changes in Hex](https://app.hex.tech/preview/6).
-      
+      🟢 Success. [Test changes or run evals in Hex](https://app.hex.tech/preview/6).
+
       **Semantic Projects**
 
       | Name | Status |
       |------|--------|
       | Sales Model | ✅ OK |
       | Broken Model | ⚠️ 1 problem |
-      "
+
+      <details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
+
+      - Create a test thread \`hex thread create <prompt> --preview-id 6\`
+      - Run evals against this preview \`hex eval run --suite-id <suite-id> --preview-id 6\`
+
+      </details>"
     `);
   });
 
   test("renders guides, semantic projects, and eval suites together", () => {
     const body = generateCommentBody({
       envVars,
+      previewId: "7",
       previewLink: "https://app.hex.tech/preview/7",
       guides: [
         {
@@ -166,7 +184,7 @@ describe("generateCommentBody", () => {
     });
     expect(body).toMatchInlineSnapshot(`
       "<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->
-      🟢 Success. [Test changes in Hex](https://app.hex.tech/preview/7).
+      🟢 Success. [Test changes or run evals in Hex](https://app.hex.tech/preview/7).
 
       **Guides**
 
@@ -187,7 +205,13 @@ describe("generateCommentBody", () => {
       | Name | Status |
       |------|--------|
       | eval-suite-123 | ⬆️ Added |
-      "
+
+      <details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
+
+      - Create a test thread \`hex thread create <prompt> --preview-id 7\`
+      - Run evals against this preview \`hex eval run --suite-id <suite-id> --preview-id 7\`
+
+      </details>"
     `);
   });
 });

@@ -76,6 +76,7 @@ async function run() {
     if (inputs.commentOnPr) {
       await commentOnPullRequest({
         envVars,
+        previewId,
         previewLink,
         guides,
         semanticProjects,
