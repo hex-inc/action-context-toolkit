@@ -60,6 +60,8 @@ async function run() {
       `Unexpected output from hex context preview: ${previewStdout}`,
     );
   }
+  core.setOutput("preview_id", previewId);
+  core.setOutput("preview_link", previewLink);
 
   if (envVars.type === "push") {
     await exec.exec("hex", [
