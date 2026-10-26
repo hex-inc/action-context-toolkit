@@ -30,6 +30,7 @@ export const getInputs = async (): Promise<Inputs> => {
   }
 
   if (
+    configFile !== "" &&
     !configFile.endsWith(".json") &&
     !configFile.endsWith(".yml") &&
     !configFile.endsWith(".yaml")

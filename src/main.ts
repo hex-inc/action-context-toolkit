@@ -28,15 +28,10 @@ async function run() {
 
   // Run hex context preview and capture JSON output.
   let previewStdout = "";
-  const previewArgs = [
-    "--profile",
-    "ci",
-    "context",
-    "preview",
-    "--json",
-    "--config-path",
-    inputs.configFile,
-  ];
+  const previewArgs = ["--profile", "ci", "context", "preview", "--json"];
+  if (inputs.configFile) {
+    previewArgs.push("--config-path", inputs.configFile);
+  }
 
   await exec.exec("hex", previewArgs, {
     listeners: {
