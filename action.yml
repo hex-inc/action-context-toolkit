@@ -6,8 +6,7 @@ inputs:
       If true, comments on GitHub pull requests with a link to the context preview. Requires a `GITHUB_TOKEN` environment variable with the pull-requests: write permission.
     default: "false"
   config_file:
-    description: Path to the hex_context.config.json file.
-    default: ./hex_context.config.json
+    description: Optional config file path. When omitted, the Hex CLI discovers hex_context.config.json, hex_context.config.yaml, or hex_context.config.yml.
   token:
     description: A token with write access to Hex
     required: true

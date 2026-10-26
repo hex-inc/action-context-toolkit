@@ -50,8 +50,9 @@ _Required._
 _A workspace token with the necessary scopes. This should be set in your GitHub repository settings in Secrets. This can be generated in your Hex Settings. The scopes are "Guides: Read, Guides: Write, Semantic layer sync", respective to what you are configuring._
 
 `config_file`
-_Optional. Defaults to_ `./hex_context.config.json`_._  
-The path to a context configuration file.
+_Optional._
+
+The path to a context configuration file. When omitted, the Hex CLI discovers `hex_context.config.json`, `hex_context.config.yaml`, or `hex_context.config.yml` in the repository root.
 
 `hex_url`
 _Optional. Defaults to_ `https://app.hex.tech`_._
