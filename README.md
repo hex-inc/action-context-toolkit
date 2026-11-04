@@ -85,6 +85,28 @@ You can sync semantic project definitions from your repository. Each entry requi
 - `id` - the semantic project ID from your Hex workspace
 - `path` - path to the directory containing the semantic model and view files
 
+To convert an Ossie semantic model, point `path` to the source file and add `convert.from: ossie`:
+
+```yaml
+semanticProjects:
+  - id: "<semantic-project-uuid>"
+    path: semantic/b2b_demo.ossie.yaml
+    convert:
+      from: ossie
+```
+
+To convert a dbt project, point `path` to the semantic manifest and add `convert.from: dbt`:
+
+```yaml
+semanticProjects:
+  - id: "<semantic-project-uuid>"
+    path: target/semantic_manifest.json
+    convert:
+      from: dbt
+```
+
+Conversion runs locally as part of preview creation. Consent is assumed to download necessary conversion tooling.
+
 ### Example config
 
 ```json
