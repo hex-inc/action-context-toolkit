@@ -85,7 +85,7 @@ You can sync semantic project definitions from your repository. Each entry requi
 - `id` - the semantic project ID from your Hex workspace
 - `path` - path to the directory containing the semantic model and view files
 
-To convert an Ossie or dbt source before uploading, point `path` to the source file and add `convert.from`:
+To convert an Ossie semantic model, point `path` to the source file and add `convert.from: ossie`:
 
 ```yaml
 semanticProjects:
@@ -95,9 +95,17 @@ semanticProjects:
       from: ossie
 ```
 
-For dbt, use `from: dbt` and point `path` to your `semantic_manifest.json`. Both formats accept an optional `convert.dialect` for the Hex exporter's SQL expression dialect.
+To convert a dbt project, point `path` to the semantic manifest and add `convert.from: dbt`:
 
-Conversion runs locally as part of preview creation. GitHub Actions' `CI=true` enables downloading conversion tooling without prompting. The action installs CLI `1.2026.11.04` when `hex` is absent; separately installed CLIs must support conversion.
+```yaml
+semanticProjects:
+  - id: "<semantic-project-uuid>"
+    path: target/semantic_manifest.json
+    convert:
+      from: dbt
+```
+
+Conversion runs locally as part of preview creation. Consent is assumed to download necessary conversion tooling.
 
 ### Example config
 
