@@ -3,7 +3,7 @@
     "target": "ES2021",
     "lib": ["ES2023"],
     "module": "ES2015",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "isolatedModules": true,
     "esModuleInterop": true,
     "noUncheckedIndexedAccess": true,

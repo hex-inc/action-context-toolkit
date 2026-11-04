@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const HEX_CLI_RELEASES_URL = "https://github.com/hex-inc/hex-cli/releases";
-const HEX_CLI_VERSION = "1.2026.08.20";
+const HEX_CLI_VERSION = "1.2026.11.04";
 
 export async function ensureHexCli() {
   const { exitCode } = await exec.getExecOutput(
