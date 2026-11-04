@@ -8,17 +8,15 @@ const HEX_CLI_RELEASES_URL = "https://github.com/hex-inc/hex-cli/releases";
 const HEX_CLI_VERSION = "1.2026.08.20";
 
 export async function ensureHexCli() {
-  const { exitCode } = await exec.getExecOutput(
-    "sh",
-    ["-c", "command -v hex >/dev/null 2>&1"],
-    {
+  const { exitCode, stdout } = await exec
+    .getExecOutput("hex", ["--version"], {
       ignoreReturnCode: true,
       silent: true,
-    },
-  );
+    })
+    .catch(() => ({ exitCode: 1, stdout: "" }));
 
-  if (exitCode === 0) {
-    core.info("Hex CLI is already installed; skipping installation.");
+  if (exitCode === 0 && stdout.trim() === `hex ${HEX_CLI_VERSION}`) {
+    core.info(`Hex CLI ${HEX_CLI_VERSION} is already installed.`);
     return;
   }
 
@@ -29,7 +27,7 @@ export async function ensureHexCli() {
   );
   const installDirectory = join(temporaryDirectory, "hex-cli");
 
-  core.info("Hex CLI was not found; installing it now.");
+  core.info(`Installing Hex CLI ${HEX_CLI_VERSION}.`);
 
   const installerUrl = `${HEX_CLI_RELEASES_URL}/download/v${HEX_CLI_VERSION}/hex-installer.sh`;
 
