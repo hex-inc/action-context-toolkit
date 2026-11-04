@@ -62,6 +62,8 @@ The base URL for your Hex workspace. For most Hex users, this will be `https://a
 _Optional. Defaults to_ `false`_._
 Whether to comment on pull requests with a summary of changes and a link to the context preview. Requires a `GITHUB_TOKEN` in the environment variables and the `pull-requests: write` permission (otherwise, can be omitted).
 
+When the CLI provides conversion results in preview JSON, comments include each conversion step's outcome and expandable output. Failed previews update the comment with conversion diagnostics while keeping the action failed.
+
 ## Configuration file
 
 The action uses a `hex_context.config.json` file to configure the resources to upload. This file is used to define the paths to your guides and semantic projects.
