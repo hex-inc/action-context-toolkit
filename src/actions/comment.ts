@@ -5,7 +5,6 @@ import {
   CliEvalSuiteResult,
   CliGuideResult,
   CliSemanticProjectResult,
-  CliSemanticProjectConversion,
 } from "../types";
 
 const HEX_COMMENT_IDENTIFIER = `<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->`;
@@ -13,39 +12,21 @@ const ADDED = "⬆️ Added";
 const UPDATED = "✏️ Modified";
 const DELETED = "❌ Deleted";
 const NO_CHANGE = "No change";
-const MAX_COMMENT_LENGTH = 60000;
-const MAX_DIAGNOSTICS_LENGTH = 12000;
-
-type CommentParams = {
-  previewId?: string;
-  previewLink?: string;
-  guides?: CliGuideResult[];
-  semanticProjects?: CliSemanticProjectResult[];
-  evalSuites?: CliEvalSuiteResult[];
-  semanticProjectConversions?: CliSemanticProjectConversion[];
-  conversionDiagnosticsError?: string;
-  error?: string;
-};
 
 const replaceNewlinesWithBreaks = (text: string) =>
   text.replace(/\n/g, "<br />");
 
-export const generateCommentBody = (
-  params: CommentParams & {
-    envVars: ExpectedEnvVars;
-  },
-): string | null => {
+export const generateCommentBody = (params: {
+  envVars: ExpectedEnvVars;
+  previewId: string;
+  previewLink: string;
+  guides: CliGuideResult[] | undefined;
+  semanticProjects: CliSemanticProjectResult[] | undefined;
+  evalSuites: CliEvalSuiteResult[] | undefined;
+}): string | null => {
   // envVars not used rn, but hoping to in the near future
-  const {
-    previewId,
-    previewLink,
-    guides,
-    semanticProjects,
-    evalSuites,
-    semanticProjectConversions,
-    conversionDiagnosticsError,
-    error,
-  } = params;
+  const { previewId, previewLink, guides, semanticProjects, evalSuites } =
+    params;
 
   // Two \n before the table header restores the double blank line from the original format.
   let guidesSection = "";
@@ -97,64 +78,42 @@ export const generateCommentBody = (
   if (
     guidesSection === "" &&
     semanticProjectsSection === "" &&
-    evalSuitesSection === "" &&
-    !semanticProjectConversions?.length &&
-    !conversionDiagnosticsError &&
-    !error
+    evalSuitesSection === ""
   ) {
     return null;
   }
 
-  const topLine = error
-    ? "🔴 Context preview failed."
-    : `🟢 Success. [Test changes or run evals in Hex](${previewLink}).`;
+  const topLine = `🟢 Success. [Test changes or run evals in Hex](${previewLink}).`;
 
-  const conversionSection = semanticProjectConversions?.length
-    ? `\n**Semantic Project Conversions**\n\nDiagnostics from a separate local conversion pass using the same source and options.\n\n${semanticProjectConversions
-        .map((conversion) => {
-          const status =
-            conversion.exitCode === 0
-              ? "✅ Converted"
-              : `❌ Failed (exit code ${conversion.exitCode})`;
-          const diagnostics = [conversion.stdout, conversion.stderr]
-            .filter(Boolean)
-            .join("\n");
-          return `${status} from ${escapeHtml(conversion.from)}: <code>${escapeHtml(conversion.path)}</code>\n\n${diagnostics ? renderDiagnostics("Conversion output", diagnostics) : ""}`;
-        })
-        .join("\n")}\n`
-    : "";
-
-  const errorSection = error
-    ? `\n${renderDiagnostics("Preview error", error)}\n`
-    : conversionDiagnosticsError
-      ? `\n⚠️ ${renderDiagnostics("Conversion diagnostics unavailable", conversionDiagnosticsError)}\n`
-      : "";
-
-  const bottomLine =
-    !error && previewId
-      ? `<details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
+  const bottomLine = `<details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
 
 - Create a test thread \`hex thread create <prompt> --preview-id ${previewId}\`
 - Run evals against this preview \`hex eval run --suite-id <suite-id> --preview-id ${previewId}\`
 
-</details>`
-      : "";
+</details>`;
 
-  const body = `${HEX_COMMENT_IDENTIFIER}
+  return `${HEX_COMMENT_IDENTIFIER}
 ${topLine}
-${guidesSection}${semanticProjectsSection}${evalSuitesSection}${conversionSection}${errorSection}
+${guidesSection}${semanticProjectsSection}${evalSuitesSection}
 ${bottomLine}`;
-  return body.length <= MAX_COMMENT_LENGTH
-    ? body
-    : `${body.slice(0, MAX_COMMENT_LENGTH - 150)}\n\n… Comment truncated. See the action logs for full diagnostics.`;
 };
 
-export const commentOnPullRequest = async (
-  params: CommentParams & {
-    envVars: ExpectedEnvVars & { type: "pull_request" };
-  },
-) => {
-  const { envVars } = params;
+export const commentOnPullRequest = async (params: {
+  envVars: ExpectedEnvVars & { type: "pull_request" };
+  previewId: string;
+  previewLink: string;
+  guides: CliGuideResult[] | undefined;
+  semanticProjects: CliSemanticProjectResult[] | undefined;
+  evalSuites: CliEvalSuiteResult[] | undefined;
+}) => {
+  const {
+    envVars,
+    previewId,
+    previewLink,
+    guides,
+    semanticProjects,
+    evalSuites,
+  } = params;
 
   if (!envVars.token) {
     throw new Error(
@@ -167,7 +126,14 @@ export const commentOnPullRequest = async (
     );
   }
 
-  const body = generateCommentBody(params);
+  const body = generateCommentBody({
+    envVars,
+    previewId,
+    previewLink,
+    guides,
+    semanticProjects,
+    evalSuites,
+  });
   if (!body) {
     return;
   }
@@ -213,21 +179,6 @@ export const commentOnPullRequest = async (
     core.info("Created Hex context preview comment on pull request.");
   }
 };
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function renderDiagnostics(title: string, text: string): string {
-  const limited =
-    text.length > MAX_DIAGNOSTICS_LENGTH
-      ? `${text.slice(0, MAX_DIAGNOSTICS_LENGTH)}\n… Truncated. See the action logs for full diagnostics.`
-      : text;
-  return `<details><summary>${title}</summary><pre>${escapeHtml(limited)}</pre></details>`;
-}
 
 function getGuidesHeading(params: {
   added: number;

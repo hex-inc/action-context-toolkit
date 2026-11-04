@@ -6,7 +6,7 @@
 
 An action to upload external sources of context to [Hex](https://hex.tech) for use in the Hex Agent for [self-serve analytics](https://learn.hex.tech/docs/explore-data/threads).
 
-This action supports uploading guides and semantic projects to Hex. Read [the docs](https://learn.hex.tech/docs/agent-management/context-management/guides#when-to-use-the-guide-library) on how to best utilize guide files in your Hex workspace. You can learn more about the types of context you can add to Hex in our agent management [docs](https://learn.hex.tech/docs/agent-management/context-management/overview).
+This action currently supports uploading guide files, unstructured context that helps agents interpret questions and respond appropriately. Read [the docs](https://learn.hex.tech/docs/agent-management/context-management/guides#when-to-use-the-guide-library) on how to best utilize guide files in your Hex workspace. You can learn more about the types of context you can add to Hex in our agent management [docs](https://learn.hex.tech/docs/agent-management/context-management/overview).
 
 ## Features
 
@@ -64,7 +64,7 @@ Whether to comment on pull requests with a summary of changes and a link to the 
 
 ## Configuration file
 
-The action uses a `hex_context.config.json`, `hex_context.config.yaml`, or `hex_context.config.yml` file to define the paths to your guides and semantic projects.
+The action uses a `hex_context.config.json` file to configure the resources to upload. This file is used to define the paths to your guides and semantic projects.
 
 ### Guides
 
@@ -85,7 +85,7 @@ You can sync semantic project definitions from your repository. Each entry requi
 - `id` - the semantic project ID from your Hex workspace
 - `path` - path to the directory containing the semantic model and view files
 
-To convert an external source before uploading, point `path` to the source file and add `convert.from`. Supported source formats are `ossie` (an Ossie YAML file) and `dbt` (a dbt `semantic_manifest.json`). Create the destination semantic project in Hex first, then use its UUID as `id`.
+To convert an Ossie or dbt source before uploading, point `path` to the source file and add `convert.from`:
 
 ```yaml
 semanticProjects:
@@ -95,34 +95,9 @@ semanticProjects:
       from: ossie
 ```
 
-For dbt, replace the entry with:
+For dbt, use `from: dbt` and point `path` to your `semantic_manifest.json`. Both formats accept an optional `convert.dialect` for the Hex exporter's SQL expression dialect.
 
-```yaml
-semanticProjects:
-  - id: "<semantic-project-uuid>"
-    path: target/semantic_manifest.json
-    convert:
-      from: dbt
-```
-
-Both formats accept an optional `convert.dialect` to select the SQL expression dialect for the Hex exporter. The action installs Hex CLI `1.2026.11.04` when `hex` is not already on PATH. An existing installation is reused, so workflows that install the CLI separately must provide a compatible version. GitHub Actions sets `CI=true`, which the CLI uses to approve downloading conversion tooling. Conversion runs locally before upload; a conversion error fails the action.
-
-With `comment_on_pr: true`, failed previews update the PR comment with their error and conversion problems while keeping the action failed. Successful preview comments include each source's conversion outcome and expandable diagnostics, including warnings and problem causes.
-
-CLI `1.2026.11.04` omits successful converter diagnostics from preview JSON, so the action runs a separate local diagnostics pass after a successful preview, only when PR comments are enabled. This repeats conversion with the same source and dialect without uploading its generated files. Temporary output is removed afterward. A failure to collect these additional diagnostics is reported separately in the comment and does not invalidate the successful preview.
-
-To retain generated files and detailed conversion diagnostics locally, run the standalone converter:
-
-```sh
-hex context semantic-project convert --from ossie --to hex \
-  --input semantic/b2b_demo.ossie.yaml --output converted/ossie --yes --json -vv \
-  > ossie-conversion.json
-hex context semantic-project convert --from dbt --to hex \
-  --input target/semantic_manifest.json --output converted/dbt --yes --json -vv \
-  > dbt-conversion.json
-```
-
-The JSON includes `output`, `stdout`, `stderr`, and `exitCode`, including converter diagnostics on failure. The command also exits with the converter's exit code. Config-driven previews use temporary conversion directories that the CLI removes after preparing the upload.
+Conversion runs locally as part of preview creation. GitHub Actions' `CI=true` enables downloading conversion tooling without prompting. The action installs CLI `1.2026.11.04` when `hex` is absent; separately installed CLIs must support conversion.
 
 ### Example config
 

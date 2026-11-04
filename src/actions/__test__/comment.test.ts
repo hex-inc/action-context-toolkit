@@ -14,67 +14,6 @@ const envVars: ExpectedEnvVars = {
 };
 
 describe("generateCommentBody", () => {
-  test("includes conversion warnings and escapes converter output", () => {
-    const body = generateCommentBody({
-      envVars,
-      previewId: "1",
-      previewLink: "https://app.hex.tech/preview/1",
-      semanticProjectConversions: [
-        {
-          id: "1",
-          path: "semantic/b2b_demo.ossie.yaml",
-          from: "ossie",
-          exitCode: 0,
-          stdout: "",
-          stderr:
-            "Encountered 1 problem: 1 warning.\n<description> & details were dropped.",
-        },
-      ],
-    });
-    expect(body).toContain("✅ Converted from ossie");
-    expect(body).toContain("1 warning");
-    expect(body).toContain("&lt;description&gt; &amp; details");
-    expect(body).not.toContain("<description>");
-  });
-
-  test("renders conversion failure without a success message or test instructions", () => {
-    const body = generateCommentBody({
-      envVars,
-      error: "Conversion failed",
-      semanticProjectConversions: [
-        {
-          id: "1",
-          path: "semantic/manifest.json",
-          from: "dbt",
-          exitCode: 1,
-          stdout: "",
-          stderr: "31 errors: metrics > forecasted_arr > expression",
-        },
-      ],
-    });
-    expect(body).toContain("🔴 Context preview failed.");
-    expect(body).toContain("❌ Failed (exit code 1) from dbt");
-    expect(body).toContain("31 errors");
-    expect(body).not.toContain("🟢 Success");
-    expect(body).not.toContain("hex thread create");
-  });
-
-  test("bounds long diagnostic comments", () => {
-    const body = generateCommentBody({
-      envVars,
-      error: "Failed",
-      semanticProjectConversions: Array.from({ length: 20 }, (_, index) => ({
-        id: String(index),
-        path: "model.yaml",
-        from: "ossie",
-        exitCode: 1,
-        stdout: "",
-        stderr: "<&>".repeat(20000),
-      })),
-    });
-    expect(body!.length).toBeLessThanOrEqual(60000);
-    expect(body).toContain("truncated");
-  });
   test("renders added and modified guides", () => {
     const body = generateCommentBody({
       envVars,
