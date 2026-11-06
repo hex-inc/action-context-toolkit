@@ -4,7 +4,7 @@ import { ensureHexCli } from "./cli";
 import { getExpectedEnvVars } from "./env";
 import { getInputs } from "./inputs";
 import { commentOnPullRequest } from "./actions/comment";
-import { CliContextPreviewResult } from "./types";
+import { CliContextPreviewFailure, CliContextPreviewResult } from "./types";
 
 const HEX_CLI_LOGIN_TOKEN_ENV = "HEX_CLI_LOGIN_TOKEN";
 
@@ -28,12 +28,20 @@ async function run() {
 
   // Run hex context preview and capture JSON output.
   let previewStdout = "";
-  const previewArgs = ["--profile", "ci", "context", "preview", "--json"];
+  const previewArgs = [
+    "--profile",
+    "ci",
+    "context",
+    "preview",
+    "--json",
+    "-vv",
+  ];
   if (inputs.configFile) {
     previewArgs.push("--config-path", inputs.configFile);
   }
 
-  await exec.exec("hex", previewArgs, {
+  const exitCode = await exec.exec("hex", previewArgs, {
+    ignoreReturnCode: true,
     listeners: {
       stdout: (data: Buffer) => {
         previewStdout += data.toString();
@@ -41,13 +49,44 @@ async function run() {
     },
   });
 
-  const previewResult = JSON.parse(previewStdout) as CliContextPreviewResult;
+  let previewResult: CliContextPreviewResult | CliContextPreviewFailure;
+  try {
+    previewResult = JSON.parse(previewStdout);
+  } catch {
+    // The CLI prints JSON even when it fails, so missing JSON means it crashed.
+    throw new Error(
+      exitCode === 0
+        ? `Unexpected output from hex context preview: ${previewStdout}`
+        : `Hex context preview failed (exit code ${exitCode}).`,
+    );
+  }
+  if ("error" in previewResult || exitCode !== 0) {
+    const error =
+      "error" in previewResult
+        ? previewResult.error
+        : `Hex context preview failed (exit code ${exitCode}).`;
+    if (envVars.type === "pull_request" && inputs.commentOnPr) {
+      try {
+        await commentOnPullRequest({
+          envVars,
+          error,
+          semanticProjectConversions: previewResult.semanticProjectConversions,
+        });
+      } catch (commentError) {
+        core.warning(
+          `Could not comment on the failed preview: ${commentError}`,
+        );
+      }
+    }
+    throw new Error(error);
+  }
   const {
     preview_id: previewId,
     preview_link: previewLink,
     guides,
     semanticProjects,
     evalSuites,
+    semanticProjectConversions,
   } = previewResult;
 
   if (!previewId || !previewLink) {
@@ -76,6 +115,7 @@ async function run() {
         guides,
         semanticProjects,
         evalSuites,
+        semanticProjectConversions,
       });
     } else {
       core.info(
@@ -91,5 +131,4 @@ void run()
   })
   .catch((e) => {
     core.setFailed(e);
-    process.exit(1);
   });
