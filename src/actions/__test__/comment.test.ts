@@ -159,6 +159,57 @@ Import warning</pre>
     expect(body).not.toContain("hex thread create");
   });
 
+  test("marks a conversion that omitted definitions as partial and expands it", () => {
+    const body = generateCommentBody({
+      envVars,
+      previewId: "1",
+      previewLink: "https://app.hex.tech/preview/1",
+      semanticProjects: [
+        {
+          dirPath: "semantic/manifest.json",
+          result: { semanticProject: { name: "acme_analytics" }, details: {} },
+        },
+      ],
+      semanticProjectConversions: [
+        {
+          id: "1",
+          path: "semantic/manifest.json",
+          from: "dbt",
+          to: "hex",
+          steps: [
+            {
+              from: "dbt",
+              to: "ossie",
+              stdout: "",
+              stderr: "Written to model.ossie.yaml",
+              exitCode: 0,
+              usable: true,
+              problems: { fatal: 0, error: 0, warning: 0, info: 0 },
+            },
+            {
+              from: "ossie",
+              to: "hex",
+              stdout: "",
+              stderr: "Failed.\nEncountered 2 problems: 2 errors.",
+              exitCode: 1,
+              usable: true,
+              problems: { fatal: 0, error: 2, warning: 0, info: 0 },
+            },
+          ],
+        },
+      ],
+    });
+    expect(body).toContain("🟢 Success.");
+    expect(body).toContain(
+      "<li>⚠️ <b>acme_analytics</b> (dbt → hex, 2 definitions omitted)",
+    );
+    expect(body).toContain("<li><details><summary>✅ Converted: dbt → ossie");
+    expect(body).toContain(
+      "<li><details open><summary>⚠️ Converted with 2 errors: ossie → hex",
+    );
+    expect(body).not.toContain("❌");
+  });
+
   test("shows the preview error when no conversion step failed", () => {
     const body = generateCommentBody({ envVars, error: "Upload <failed>" });
     expect(body).toContain("🔴 Context preview failed.");
