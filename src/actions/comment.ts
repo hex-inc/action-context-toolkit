@@ -2,6 +2,7 @@ import * as github from "@actions/github";
 import * as core from "@actions/core";
 import { ExpectedEnvVars } from "../env";
 import {
+  CliConversionStep,
   CliEvalSuiteResult,
   CliGuideResult,
   CliSemanticProjectResult,
@@ -321,21 +322,45 @@ function getConversionItem(params: {
   const name = uploaded
     ? `<b>${escapeHtml(uploaded.result.semanticProject.name)}</b>`
     : `<b><code>${escapeHtml(conversion.path)}</code></b>`;
-  const failedStep = conversion.steps.find((step) => step.exitCode !== 0);
+  const outcomes = conversion.steps.map(getStepOutcome);
+  const failedStep = conversion.steps.find(
+    (_, index) => outcomes[index] === "failed",
+  );
+  const omitted = conversion.steps.reduce(
+    (count, step) => count + (step.problems?.error ?? 0),
+    0,
+  );
   const route = `${escapeHtml(conversion.from)} → ${escapeHtml(conversion.to)}`;
   const heading = failedStep
     ? `❌ ${name} (${route}, exit code ${failedStep.exitCode})`
-    : `✅ ${name} (${route})`;
-  const steps = conversion.steps.map((step) => {
+    : outcomes.includes("partial")
+      ? `⚠️ ${name} (${route}, ${omitted > 0 ? `${omitted} definition${omitted === 1 ? "" : "s"} omitted` : "definitions omitted"})`
+      : `✅ ${name} (${route})`;
+  const steps = conversion.steps.map((step, index) => {
+    const outcome = outcomes[index];
     const status =
-      step.exitCode === 0
+      outcome === "converted"
         ? "✅ Converted"
-        : `❌ Failed (exit code ${step.exitCode})`;
-    const details = step.exitCode === 0 ? "<details>" : "<details open>";
+        : outcome === "partial"
+          ? `⚠️ Converted with ${step.problems?.error ?? "some"} errors`
+          : `❌ Failed (exit code ${step.exitCode})`;
+    const details = outcome === "converted" ? "<details>" : "<details open>";
     // The blank lines let <pre> start its own HTML block, so output containing blank lines stays verbatim.
     return `<li>${details}<summary>${status}: ${escapeHtml(step.from)} → ${escapeHtml(step.to)}</summary>\n\n<pre>${escapeHtml(limitDiagnostics(formatStepOutput(step)))}</pre>\n\n</details></li>`;
   });
   return `<li>${heading}\n<ul>\n${steps.join("\n")}\n</ul>\n</li>`;
+}
+
+/**
+ * A converter may exit nonzero after omitting definitions it could not convert
+ * while still writing the rest, which the CLI reports as usable and syncs.
+ * Older CLIs omit `usable`, so a nonzero exit is a failure for them.
+ */
+function getStepOutcome(
+  step: CliConversionStep,
+): "converted" | "partial" | "failed" {
+  if (step.exitCode === 0) return "converted";
+  return step.usable ? "partial" : "failed";
 }
 
 /** Label the streams only when both carry output; converters usually write to one. */
