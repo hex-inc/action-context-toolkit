@@ -220,6 +220,19 @@ describe("generateCommentBody", () => {
       </details>"
     `);
   });
+
+  test("shows an escaped preview error without success links", () => {
+    const body = generateCommentBody({
+      envVars,
+      error: "Upload <failed> & stopped",
+    });
+    expect(body).toContain("🔴 Context preview failed.");
+    expect(body).toContain(
+      "<details><summary>Preview error</summary>\n\n<pre>Upload &lt;failed&gt; &amp; stopped</pre>",
+    );
+    expect(body).not.toContain("🟢 Success");
+    expect(body).not.toContain("hex thread create");
+  });
 });
 
 test("updates the existing preview comment instead of creating another", async () => {

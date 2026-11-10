@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 import { ensureHexCli } from "./cli";
-import { getExpectedEnvVars } from "./env";
+import { ExpectedEnvVars, getExpectedEnvVars } from "./env";
 import { getInputs } from "./inputs";
 import { commentOnPullRequest } from "./actions/comment";
 import { CliContextPreviewFailure, CliContextPreviewResult } from "./types";
@@ -56,10 +56,18 @@ async function run() {
     }
   }
   if ("error" in previewResult) {
-    throw new Error(previewResult.error);
+    return failPreview({
+      error: previewResult.error,
+      envVars,
+      commentOnPr: inputs.commentOnPr,
+    });
   }
   if (exitCode !== 0) {
-    throw new Error(`Hex context preview failed (exit code ${exitCode}).`);
+    return failPreview({
+      error: `Hex context preview failed (exit code ${exitCode}).`,
+      envVars,
+      commentOnPr: inputs.commentOnPr,
+    });
   }
   const {
     preview_id: previewId,
@@ -102,6 +110,22 @@ async function run() {
       );
     }
   }
+}
+
+async function failPreview(params: {
+  error: string;
+  envVars: ExpectedEnvVars;
+  commentOnPr: boolean;
+}): Promise<never> {
+  const { error, envVars, commentOnPr } = params;
+  if (envVars.type === "pull_request" && commentOnPr) {
+    try {
+      await commentOnPullRequest({ envVars, error });
+    } catch (commentError) {
+      core.warning(`Could not comment on the failed preview: ${commentError}`);
+    }
+  }
+  throw new Error(error);
 }
 
 void run()

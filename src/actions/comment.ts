@@ -13,20 +13,31 @@ const UPDATED = "✏️ Modified";
 const DELETED = "❌ Deleted";
 const NO_CHANGE = "No change";
 
+type CommentPreviewParam =
+  | { previewId: string; previewLink: string; error?: never }
+  | { error: string; previewId?: never; previewLink?: never };
+
 const replaceNewlinesWithBreaks = (text: string) =>
   text.replace(/\n/g, "<br />");
 
-export const generateCommentBody = (params: {
-  envVars: ExpectedEnvVars;
-  previewId: string;
-  previewLink: string;
-  guides: CliGuideResult[] | undefined;
-  semanticProjects: CliSemanticProjectResult[] | undefined;
-  evalSuites: CliEvalSuiteResult[] | undefined;
-}): string | null => {
+export const generateCommentBody = (
+  params: {
+    envVars: ExpectedEnvVars;
+    guides?: CliGuideResult[];
+    semanticProjects?: CliSemanticProjectResult[];
+    evalSuites?: CliEvalSuiteResult[];
+  } & CommentPreviewParam,
+): string | null => {
   // envVars not used rn, but hoping to in the near future
-  const { previewId, previewLink, guides, semanticProjects, evalSuites } =
-    params;
+  const {
+    previewId,
+    previewLink,
+    guides,
+    semanticProjects,
+    evalSuites,
+    error,
+  } = params;
+  const hasError = error !== undefined;
 
   // Two \n before the table header restores the double blank line from the original format.
   let guidesSection = "";
@@ -75,45 +86,48 @@ export const generateCommentBody = (params: {
     evalSuitesSection = `\n${heading}\n\n${tableHeaders}\n${tableRows.join("\n")}\n`;
   }
 
+  let errorSection = "";
+  if (hasError) {
+    errorSection = `\n<details><summary>Preview error</summary>\n\n<pre>${escapeHtml(error)}</pre>\n\n</details>\n`;
+  }
+
   if (
     guidesSection === "" &&
     semanticProjectsSection === "" &&
-    evalSuitesSection === ""
+    evalSuitesSection === "" &&
+    !hasError
   ) {
     return null;
   }
 
-  const topLine = `🟢 Success. [Test changes or run evals in Hex](${previewLink}).`;
+  const topLine = hasError
+    ? "🔴 Context preview failed."
+    : `🟢 Success. [Test changes or run evals in Hex](${previewLink}).`;
 
-  const bottomLine = `<details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
+  const bottomLine = !hasError
+    ? `<details><summary>ℹ️ Use the <a href="https://learn.hex.tech/docs/api-integrations/cli">Hex CLI</a> to test these changes</summary>
 
 - Create a test thread \`hex thread create <prompt> --preview-id ${previewId}\`
 - Run evals against this preview \`hex eval run --suite-id <suite-id> --preview-id ${previewId}\`
 
-</details>`;
+</details>`
+    : "";
 
   return `${HEX_COMMENT_IDENTIFIER}
 ${topLine}
-${guidesSection}${semanticProjectsSection}${evalSuitesSection}
+${guidesSection}${semanticProjectsSection}${evalSuitesSection}${errorSection}
 ${bottomLine}`;
 };
 
-export const commentOnPullRequest = async (params: {
-  envVars: ExpectedEnvVars & { type: "pull_request" };
-  previewId: string;
-  previewLink: string;
-  guides: CliGuideResult[] | undefined;
-  semanticProjects: CliSemanticProjectResult[] | undefined;
-  evalSuites: CliEvalSuiteResult[] | undefined;
-}) => {
-  const {
-    envVars,
-    previewId,
-    previewLink,
-    guides,
-    semanticProjects,
-    evalSuites,
-  } = params;
+export const commentOnPullRequest = async (
+  params: {
+    envVars: ExpectedEnvVars & { type: "pull_request" };
+    guides?: CliGuideResult[];
+    semanticProjects?: CliSemanticProjectResult[];
+    evalSuites?: CliEvalSuiteResult[];
+  } & CommentPreviewParam,
+) => {
+  const { envVars } = params;
 
   if (!envVars.token) {
     throw new Error(
@@ -126,14 +140,7 @@ export const commentOnPullRequest = async (params: {
     );
   }
 
-  const body = generateCommentBody({
-    envVars,
-    previewId,
-    previewLink,
-    guides,
-    semanticProjects,
-    evalSuites,
-  });
+  const body = generateCommentBody(params);
   if (!body) {
     return;
   }
@@ -179,6 +186,13 @@ export const commentOnPullRequest = async (params: {
     core.info("Created Hex context preview comment on pull request.");
   }
 };
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 function getGuidesHeading(params: {
   added: number;

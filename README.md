@@ -138,6 +138,10 @@ Conversion runs locally as part of preview creation. Consent is assumed to downl
 }
 ```
 
+## Exceptions
+
+If preview creation fails and the CLI returns a JSON error, the action updates the comment with that error and remains failed.
+
 ## Migrating from v1 to v2
 
 The action now installs and uses the Hex CLI. No additional installation step is required.
