@@ -100,3 +100,38 @@ test("does not publish when the preview command fails on a push event", async ()
     expect.arrayContaining(["publish"]),
   );
 });
+
+test("reports the CLI's JSON error when preview creation fails", async () => {
+  vi.mocked(exec.exec).mockImplementation(async (_command, args, options) => {
+    if (args?.includes("preview")) {
+      options?.listeners?.stdout?.(
+        Buffer.from(JSON.stringify({ error: "Could not upload context" })),
+      );
+      return 1;
+    }
+    return 0;
+  });
+
+  await vi.importActual("../main");
+
+  await vi.waitFor(() =>
+    expect(core.setFailed).toHaveBeenCalledWith(
+      new Error("Could not upload context"),
+    ),
+  );
+});
+
+test("reports the exit code when the CLI crashes without JSON output", async () => {
+  vi.mocked(exec.exec).mockImplementation(async (_command, args) => {
+    if (args?.includes("preview")) return 1;
+    return 0;
+  });
+
+  await vi.importActual("../main");
+
+  await vi.waitFor(() =>
+    expect(core.setFailed).toHaveBeenCalledWith(
+      new Error("Hex context preview failed (exit code 1)."),
+    ),
+  );
+});
