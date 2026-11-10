@@ -107,6 +107,26 @@ semanticProjects:
 
 Conversion runs locally as part of preview creation. Consent is assumed to download necessary conversion tooling.
 
+#### Generated dbt manifests and Git ignores
+
+The action installs Hex CLI `1.2026.11.10` when `hex` is not already on `PATH`. If your runner already has the CLI installed, update it to this version or newer to use ignored dbt manifests.
+
+An explicitly configured `convert.from: dbt` input can be ignored by Git, so `target/semantic_manifest.json` does not need to be committed or removed from `.gitignore`. Generate the manifest in the checked-out repository before running this action, for example with `dbt parse` after installing your project's dbt adapter and dependencies and configuring its profile:
+
+```yaml
+- name: Generate the dbt semantic manifest
+  run: dbt parse
+- name: Upload context resources
+  uses: hex-inc/action-context-toolkit@v2
+  env:
+    GITHUB_TOKEN: ${{ github.token }}
+  with:
+    token: ${{ secrets.HEX_API_TOKEN }}
+    comment_on_pr: true
+```
+
+Source paths are relative to the context config file. The dbt manifest must resolve inside that config's Git repository, including through symlinks. This exception applies only to explicitly configured dbt conversion inputs; guides, Ossie inputs, and native semantic project directories still respect Git ignores.
+
 ### Example config
 
 ```json
