@@ -233,6 +233,33 @@ describe("generateCommentBody", () => {
     expect(body).not.toContain("🟢 Success");
     expect(body).not.toContain("hex thread create");
   });
+
+  test("bounds long preview errors", () => {
+    const body = generateCommentBody({
+      envVars,
+      error: "Failure details ".repeat(1000),
+    });
+    expect(body).toContain(
+      "… Truncated. See the action logs for full diagnostics.",
+    );
+    expect(body!.length).toBeLessThan(6500);
+  });
+
+  test("bounds the whole comment when its resource summary is long", () => {
+    const body = generateCommentBody({
+      envVars,
+      previewId: "1",
+      previewLink: "https://app.hex.tech/preview/1",
+      guides: Array.from({ length: 3000 }, (_, i) => ({
+        name: `guide-${i}.md`,
+        result: "created",
+      })),
+    });
+    expect(body!.length).toBeLessThanOrEqual(60000);
+    expect(body).toContain(
+      "… Comment truncated. See the action logs for full diagnostics.",
+    );
+  });
 });
 
 test("updates the existing preview comment instead of creating another", async () => {

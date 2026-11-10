@@ -12,6 +12,8 @@ const ADDED = "⬆️ Added";
 const UPDATED = "✏️ Modified";
 const DELETED = "❌ Deleted";
 const NO_CHANGE = "No change";
+const MAX_COMMENT_LENGTH = 60000;
+const MAX_DIAGNOSTICS_LENGTH = 6000;
 
 type CommentPreviewParam =
   | { previewId: string; previewLink: string; error?: never }
@@ -88,7 +90,13 @@ export const generateCommentBody = (
 
   let errorSection = "";
   if (hasError) {
-    errorSection = `\n<details><summary>Preview error</summary>\n\n<pre>${escapeHtml(error)}</pre>\n\n</details>\n`;
+    let errorText = error;
+    if (errorText.length > MAX_DIAGNOSTICS_LENGTH) {
+      errorText = errorText.slice(0, MAX_DIAGNOSTICS_LENGTH);
+      errorText += "\n… Truncated. See the action logs for full diagnostics.";
+    }
+    errorText = escapeHtml(errorText);
+    errorSection = `\n<details><summary>Preview error</summary>\n\n<pre>${errorText}</pre>\n\n</details>\n`;
   }
 
   if (
@@ -113,10 +121,19 @@ export const generateCommentBody = (
 </details>`
     : "";
 
-  return `${HEX_COMMENT_IDENTIFIER}
+  const body = `${HEX_COMMENT_IDENTIFIER}
 ${topLine}
 ${guidesSection}${semanticProjectsSection}${evalSuitesSection}${errorSection}
 ${bottomLine}`;
+  let boundedBody: string;
+  if (body.length <= MAX_COMMENT_LENGTH) {
+    boundedBody = body;
+  } else {
+    boundedBody = body.slice(0, MAX_COMMENT_LENGTH - 150);
+    boundedBody +=
+      "\n\n… Comment truncated. See the action logs for full diagnostics.";
+  }
+  return boundedBody;
 };
 
 export const commentOnPullRequest = async (
