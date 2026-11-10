@@ -46,8 +46,24 @@ export type CliContextPreviewResult = {
   guides: CliGuideResult[];
   semanticProjects: CliSemanticProjectResult[];
   evalSuites?: CliEvalSuiteResult[];
+  semanticProjectConversions?: CliSemanticProjectConversion[];
+};
+
+export type CliSemanticProjectConversion = {
+  id: string;
+  path: string;
+  from: string;
+  to: string;
+  steps: {
+    from: string;
+    to: string;
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+  }[];
 };
 
 export type CliContextPreviewFailure = {
   error: string;
+  semanticProjectConversions?: CliSemanticProjectConversion[];
 };

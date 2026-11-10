@@ -4,7 +4,11 @@ import { ensureHexCli } from "./cli";
 import { ExpectedEnvVars, getExpectedEnvVars } from "./env";
 import { getInputs } from "./inputs";
 import { commentOnPullRequest } from "./actions/comment";
-import { CliContextPreviewFailure, CliContextPreviewResult } from "./types";
+import {
+  CliContextPreviewFailure,
+  CliContextPreviewResult,
+  CliSemanticProjectConversion,
+} from "./types";
 
 const HEX_CLI_LOGIN_TOKEN_ENV = "HEX_CLI_LOGIN_TOKEN";
 
@@ -28,7 +32,14 @@ async function run() {
 
   // Run hex context preview and capture JSON output.
   let previewStdout = "";
-  const previewArgs = ["--profile", "ci", "context", "preview", "--json"];
+  const previewArgs = [
+    "--profile",
+    "ci",
+    "context",
+    "preview",
+    "--json",
+    "-vv",
+  ];
   if (inputs.configFile) {
     previewArgs.push("--config-path", inputs.configFile);
   }
@@ -66,6 +77,7 @@ async function run() {
       error: previewResult.error,
       envVars,
       commentOnPr: inputs.commentOnPr,
+      semanticProjectConversions: previewResult.semanticProjectConversions,
     });
   }
   if (exitCode !== 0) {
@@ -73,6 +85,7 @@ async function run() {
       error: `Hex context preview failed (exit code ${exitCode}).`,
       envVars,
       commentOnPr: inputs.commentOnPr,
+      semanticProjectConversions: previewResult.semanticProjectConversions,
     });
   }
   const {
@@ -81,6 +94,7 @@ async function run() {
     guides,
     semanticProjects,
     evalSuites,
+    semanticProjectConversions,
   } = previewResult;
 
   if (!previewId || !previewLink) {
@@ -109,6 +123,7 @@ async function run() {
         guides,
         semanticProjects,
         evalSuites,
+        semanticProjectConversions,
       });
     } else {
       core.info(
@@ -122,11 +137,16 @@ async function failPreview(params: {
   error: string;
   envVars: ExpectedEnvVars;
   commentOnPr: boolean;
+  semanticProjectConversions?: CliSemanticProjectConversion[];
 }): Promise<never> {
-  const { error, envVars, commentOnPr } = params;
+  const { error, envVars, commentOnPr, semanticProjectConversions } = params;
   if (envVars.type === "pull_request" && commentOnPr) {
     try {
-      await commentOnPullRequest({ envVars, error });
+      await commentOnPullRequest({
+        envVars,
+        error,
+        semanticProjectConversions,
+      });
     } catch (commentError) {
       core.warning(`Could not comment on the failed preview: ${commentError}`);
     }

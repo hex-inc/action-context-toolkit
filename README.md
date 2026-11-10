@@ -107,6 +107,8 @@ semanticProjects:
 
 Conversion runs locally as part of preview creation. Consent is assumed to download necessary conversion tooling.
 
+Pull request comments include expandable output for each semantic project conversion step.
+
 ### Example config
 
 ```json
@@ -141,6 +143,8 @@ Conversion runs locally as part of preview creation. Consent is assumed to downl
 ## Exceptions
 
 If preview creation fails and the CLI returns a JSON error, the action updates the comment with that error and remains failed.
+
+When a conversion step fails, its diagnostics are expanded in the pull request comment.
 
 ## Migrating from v1 to v2
 
