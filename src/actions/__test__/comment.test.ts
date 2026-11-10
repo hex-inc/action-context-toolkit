@@ -261,7 +261,7 @@ describe("generateCommentBody", () => {
     );
   });
 
-  test("keeps successful conversion details collapsed after eval suites", () => {
+  test("keeps successful conversion details collapsed", () => {
     const body = generateCommentBody({
       envVars,
       previewId: "1",
