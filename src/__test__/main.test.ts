@@ -6,6 +6,7 @@ vi.mock("@actions/core", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@actions/core")>()),
   setOutput: vi.fn(),
   info: vi.fn(),
+  setFailed: vi.fn(),
 }));
 vi.mock("@actions/exec", () => ({ exec: vi.fn() }));
 vi.mock("../cli", () => ({ ensureHexCli: vi.fn() }));
@@ -77,5 +78,25 @@ test("rejects an explicit config path with an unsupported extension", async () =
 
   await expect(getInputs()).rejects.toThrow(
     "Expected a .json, .yml or .yaml config file, got: custom.txt",
+  );
+});
+
+test("does not publish when the preview command fails on a push event", async () => {
+  vi.stubEnv("GITHUB_EVENT_NAME", "push");
+  vi.stubEnv("GITHUB_REF_NAME", "main");
+  vi.spyOn(process, "exit").mockImplementation(vi.fn<typeof process.exit>());
+  const error = new Error("Preview command failed");
+  vi.mocked(exec.exec).mockImplementation(async (_command, args) => {
+    if (args?.includes("preview")) throw error;
+    return 0;
+  });
+
+  await vi.importActual("../main");
+
+  await vi.waitFor(() => expect(core.setFailed).toHaveBeenCalledWith(error));
+  expect(core.setOutput).not.toHaveBeenCalled();
+  expect(exec.exec).not.toHaveBeenCalledWith(
+    "hex",
+    expect.arrayContaining(["publish"]),
   );
 });
