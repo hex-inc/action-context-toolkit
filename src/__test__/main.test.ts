@@ -124,7 +124,8 @@ test("reports the CLI's JSON error when preview creation fails", async () => {
   );
 });
 
-test("reports the exit code when the CLI crashes without JSON output", async () => {
+test("comments with the exit code when the CLI crashes without JSON output", async () => {
+  vi.stubEnv("INPUT_COMMENT_ON_PR", "true");
   vi.mocked(exec.exec).mockImplementation(async (_command, args) => {
     if (args?.includes("preview")) return 1;
     return 0;
@@ -136,6 +137,11 @@ test("reports the exit code when the CLI crashes without JSON output", async () 
     expect(core.setFailed).toHaveBeenCalledWith(
       new Error("Hex context preview failed (exit code 1)."),
     ),
+  );
+  expect(commentOnPullRequest).toHaveBeenCalledWith(
+    expect.objectContaining({
+      error: "Hex context preview failed (exit code 1).",
+    }),
   );
 });
 

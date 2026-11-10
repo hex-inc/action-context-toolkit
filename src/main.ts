@@ -48,11 +48,17 @@ async function run() {
   } catch {
     // The CLI prints JSON even when it fails, so missing JSON means it crashed.
     if (exitCode === 0) {
-      throw new Error(
-        `Unexpected output from hex context preview: ${previewStdout}`,
-      );
+      return failPreview({
+        error: `Unexpected output from hex context preview: ${previewStdout}`,
+        envVars,
+        commentOnPr: inputs.commentOnPr,
+      });
     } else {
-      throw new Error(`Hex context preview failed (exit code ${exitCode}).`);
+      return failPreview({
+        error: `Hex context preview failed (exit code ${exitCode}).`,
+        envVars,
+        commentOnPr: inputs.commentOnPr,
+      });
     }
   }
   if ("error" in previewResult) {
