@@ -1,14 +1,18 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
+import { commentOnPullRequest } from "../actions/comment";
 
 vi.mock("@actions/core", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@actions/core")>()),
   setOutput: vi.fn(),
   info: vi.fn(),
+  setFailed: vi.fn(),
+  warning: vi.fn(),
 }));
 vi.mock("@actions/exec", () => ({ exec: vi.fn() }));
 vi.mock("../cli", () => ({ ensureHexCli: vi.fn() }));
+vi.mock("../actions/comment", () => ({ commentOnPullRequest: vi.fn() }));
 
 beforeEach(() => {
   vi.resetModules();
@@ -77,5 +81,117 @@ test("rejects an explicit config path with an unsupported extension", async () =
 
   await expect(getInputs()).rejects.toThrow(
     "Expected a .json, .yml or .yaml config file, got: custom.txt",
+  );
+});
+
+test("does not publish when the preview command fails on a push event", async () => {
+  vi.stubEnv("GITHUB_EVENT_NAME", "push");
+  vi.stubEnv("GITHUB_REF_NAME", "main");
+  vi.spyOn(process, "exit").mockImplementation(vi.fn<typeof process.exit>());
+  const error = new Error("Preview command failed");
+  vi.mocked(exec.exec).mockImplementation(async (_command, args) => {
+    if (args?.includes("preview")) throw error;
+    return 0;
+  });
+
+  await vi.importActual("../main");
+
+  await vi.waitFor(() => expect(core.setFailed).toHaveBeenCalledWith(error));
+  expect(core.setOutput).not.toHaveBeenCalled();
+  expect(exec.exec).not.toHaveBeenCalledWith(
+    "hex",
+    expect.arrayContaining(["publish"]),
+  );
+});
+
+test("reports the CLI's JSON error when preview creation fails", async () => {
+  vi.mocked(exec.exec).mockImplementation(async (_command, args, options) => {
+    if (args?.includes("preview")) {
+      options?.listeners?.stdout?.(
+        Buffer.from(JSON.stringify({ error: "Could not upload context" })),
+      );
+      return 1;
+    }
+    return 0;
+  });
+
+  await vi.importActual("../main");
+
+  await vi.waitFor(() =>
+    expect(core.setFailed).toHaveBeenCalledWith(
+      new Error("Could not upload context"),
+    ),
+  );
+});
+
+test("comments with the exit code when the CLI crashes without JSON output", async () => {
+  vi.stubEnv("INPUT_COMMENT_ON_PR", "true");
+  vi.mocked(exec.exec).mockImplementation(async (_command, args) => {
+    if (args?.includes("preview")) return 1;
+    return 0;
+  });
+
+  await vi.importActual("../main");
+
+  await vi.waitFor(() =>
+    expect(core.setFailed).toHaveBeenCalledWith(
+      new Error("Hex context preview failed (exit code 1)."),
+    ),
+  );
+  expect(commentOnPullRequest).toHaveBeenCalledWith(
+    expect.objectContaining({
+      error: "Hex context preview failed (exit code 1).",
+    }),
+  );
+});
+
+test("comments with the preview error and still fails the action", async () => {
+  vi.stubEnv("INPUT_COMMENT_ON_PR", "true");
+  vi.mocked(exec.exec).mockImplementation(async (_command, args, options) => {
+    if (args?.includes("preview")) {
+      options?.listeners?.stdout?.(
+        Buffer.from(JSON.stringify({ error: "Could not upload context" })),
+      );
+      return 1;
+    }
+    return 0;
+  });
+
+  await vi.importActual("../main");
+
+  await vi.waitFor(() =>
+    expect(core.setFailed).toHaveBeenCalledWith(
+      new Error("Could not upload context"),
+    ),
+  );
+  expect(commentOnPullRequest).toHaveBeenCalledWith(
+    expect.objectContaining({ error: "Could not upload context" }),
+  );
+});
+
+test("preserves the preview error when posting its comment fails", async () => {
+  vi.stubEnv("INPUT_COMMENT_ON_PR", "true");
+  vi.mocked(exec.exec).mockImplementation(async (_command, args, options) => {
+    if (args?.includes("preview")) {
+      options?.listeners?.stdout?.(
+        Buffer.from(JSON.stringify({ error: "Could not upload context" })),
+      );
+      return 1;
+    }
+    return 0;
+  });
+  vi.mocked(commentOnPullRequest).mockRejectedValueOnce(
+    new Error("GitHub unavailable"),
+  );
+
+  await vi.importActual("../main");
+
+  await vi.waitFor(() =>
+    expect(core.setFailed).toHaveBeenCalledWith(
+      new Error("Could not upload context"),
+    ),
+  );
+  expect(core.warning).toHaveBeenCalledWith(
+    "Could not comment on the failed preview: Error: GitHub unavailable",
   );
 });

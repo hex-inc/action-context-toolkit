@@ -1,6 +1,12 @@
-import { describe, test, expect } from "vitest";
-import { generateCommentBody } from "../comment";
+import { describe, test, expect, vi } from "vitest";
+import * as github from "@actions/github";
+import { generateCommentBody, commentOnPullRequest } from "../comment";
 import { ExpectedEnvVars } from "../../env";
+
+vi.mock("@actions/github", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@actions/github")>();
+  return { ...actual, getOctokit: vi.fn(actual.getOctokit) };
+});
 
 const envVars: ExpectedEnvVars = {
   baseUrl: "https://hex.tech",
@@ -214,4 +220,94 @@ describe("generateCommentBody", () => {
       </details>"
     `);
   });
+
+  test("shows an escaped preview error without success links", () => {
+    const body = generateCommentBody({
+      envVars,
+      error: "Upload <failed> & stopped",
+    });
+    expect(body).toContain("🔴 Context preview failed.");
+    expect(body).toContain(
+      "<details><summary>Preview error</summary>\n\n<pre>Upload &lt;failed&gt; &amp; stopped</pre>",
+    );
+    expect(body).not.toContain("🟢 Success");
+    expect(body).not.toContain("hex thread create");
+  });
+
+  test("bounds long preview errors", () => {
+    const body = generateCommentBody({
+      envVars,
+      error: "Failure details ".repeat(1000),
+    });
+    expect(body).toContain(
+      "… Truncated. See the action logs for full diagnostics.",
+    );
+    expect(body!.length).toBeLessThan(6500);
+  });
+
+  test("bounds the whole comment when its resource summary is long", () => {
+    const body = generateCommentBody({
+      envVars,
+      previewId: "1",
+      previewLink: "https://app.hex.tech/preview/1",
+      guides: Array.from({ length: 3000 }, (_, i) => ({
+        name: `guide-${i}.md`,
+        result: "created",
+      })),
+    });
+    expect(body!.length).toBeLessThanOrEqual(60000);
+    expect(body).toContain(
+      "… Comment truncated. See the action logs for full diagnostics.",
+    );
+  });
+});
+
+test("updates the existing preview comment instead of creating another", async () => {
+  const actual =
+    await vi.importActual<typeof import("@actions/github")>("@actions/github");
+  const octokit = actual.getOctokit("test-token");
+  const createComment = vi.fn().mockResolvedValue({});
+  const updateComment = vi.fn().mockResolvedValue({});
+  vi.spyOn(octokit.rest.issues, "createComment").mockImplementation(
+    createComment,
+  );
+  vi.spyOn(octokit.rest.issues, "updateComment").mockImplementation(
+    updateComment,
+  );
+  const previousBody = generateCommentBody({
+    envVars,
+    previewId: "1",
+    previewLink: "https://app.hex.tech/preview/1",
+    guides: [{ name: "guide.md", result: "created" }],
+    semanticProjects: undefined,
+    evalSuites: undefined,
+  });
+  vi.spyOn(octokit.paginate, "iterator").mockImplementation(
+    vi.fn().mockReturnValue(
+      (async function* () {
+        yield { data: [{ id: 123, body: previousBody }] };
+      })(),
+    ),
+  );
+  vi.mocked(github.getOctokit).mockReturnValue(octokit);
+
+  await commentOnPullRequest({
+    envVars: { ...envVars, type: "pull_request" },
+    previewId: "2",
+    previewLink: "https://app.hex.tech/preview/2",
+    guides: [{ name: "guide.md", result: "updated" }],
+    semanticProjects: undefined,
+    evalSuites: undefined,
+  });
+
+  expect(updateComment).toHaveBeenCalledWith(
+    expect.objectContaining({
+      owner: envVars.owner,
+      repo: envVars.repo,
+      issue_number: envVars.pullRequestNumber,
+      comment_id: 123,
+      body: expect.stringContaining("https://app.hex.tech/preview/2"),
+    }),
+  );
+  expect(createComment).not.toHaveBeenCalled();
 });

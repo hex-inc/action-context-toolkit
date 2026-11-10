@@ -47,3 +47,7 @@ export type CliContextPreviewResult = {
   semanticProjects: CliSemanticProjectResult[];
   evalSuites?: CliEvalSuiteResult[];
 };
+
+export type CliContextPreviewFailure = {
+  error: string;
+};

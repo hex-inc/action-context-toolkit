@@ -1,10 +1,10 @@
 import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 import { ensureHexCli } from "./cli";
-import { getExpectedEnvVars } from "./env";
+import { ExpectedEnvVars, getExpectedEnvVars } from "./env";
 import { getInputs } from "./inputs";
 import { commentOnPullRequest } from "./actions/comment";
-import { CliContextPreviewResult } from "./types";
+import { CliContextPreviewFailure, CliContextPreviewResult } from "./types";
 
 const HEX_CLI_LOGIN_TOKEN_ENV = "HEX_CLI_LOGIN_TOKEN";
 
@@ -33,7 +33,8 @@ async function run() {
     previewArgs.push("--config-path", inputs.configFile);
   }
 
-  await exec.exec("hex", previewArgs, {
+  const exitCode = await exec.exec("hex", previewArgs, {
+    ignoreReturnCode: true,
     listeners: {
       stdout: (data: Buffer) => {
         previewStdout += data.toString();
@@ -41,7 +42,39 @@ async function run() {
     },
   });
 
-  const previewResult = JSON.parse(previewStdout) as CliContextPreviewResult;
+  let previewResult: CliContextPreviewResult | CliContextPreviewFailure;
+  try {
+    previewResult = JSON.parse(previewStdout);
+  } catch {
+    // The CLI prints JSON even when it fails, so missing JSON means it crashed.
+    if (exitCode === 0) {
+      return failPreview({
+        error: `Unexpected output from hex context preview: ${previewStdout}`,
+        envVars,
+        commentOnPr: inputs.commentOnPr,
+      });
+    } else {
+      return failPreview({
+        error: `Hex context preview failed (exit code ${exitCode}).`,
+        envVars,
+        commentOnPr: inputs.commentOnPr,
+      });
+    }
+  }
+  if ("error" in previewResult) {
+    return failPreview({
+      error: previewResult.error,
+      envVars,
+      commentOnPr: inputs.commentOnPr,
+    });
+  }
+  if (exitCode !== 0) {
+    return failPreview({
+      error: `Hex context preview failed (exit code ${exitCode}).`,
+      envVars,
+      commentOnPr: inputs.commentOnPr,
+    });
+  }
   const {
     preview_id: previewId,
     preview_link: previewLink,
@@ -85,11 +118,27 @@ async function run() {
   }
 }
 
+async function failPreview(params: {
+  error: string;
+  envVars: ExpectedEnvVars;
+  commentOnPr: boolean;
+}): Promise<never> {
+  const { error, envVars, commentOnPr } = params;
+  if (envVars.type === "pull_request" && commentOnPr) {
+    try {
+      await commentOnPullRequest({ envVars, error });
+    } catch (commentError) {
+      core.warning(`Could not comment on the failed preview: ${commentError}`);
+    }
+  }
+  throw new Error(error);
+}
+
 void run()
   .then(() => {
     core.info("Finished running hex context toolkit");
   })
   .catch((e) => {
+    // `setFailed` sets exit code 1 and lets Node flush logs before exiting.
     core.setFailed(e);
-    process.exit(1);
   });
