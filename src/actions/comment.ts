@@ -5,6 +5,7 @@ import {
   CliEvalSuiteResult,
   CliGuideResult,
   CliSemanticProjectResult,
+  CliSemanticProjectConversion,
 } from "../types";
 
 const HEX_COMMENT_IDENTIFIER = `<!-- hex-context-toolkit-comment-37a4e83 do not modify / remove this comment -->`;
@@ -28,6 +29,7 @@ export const generateCommentBody = (
     guides?: CliGuideResult[];
     semanticProjects?: CliSemanticProjectResult[];
     evalSuites?: CliEvalSuiteResult[];
+    semanticProjectConversions?: CliSemanticProjectConversion[];
   } & CommentPreviewParam,
 ): string | null => {
   // envVars not used rn, but hoping to in the near future
@@ -37,6 +39,7 @@ export const generateCommentBody = (
     guides,
     semanticProjects,
     evalSuites,
+    semanticProjectConversions,
     error,
   } = params;
   const hasError = error !== undefined;
@@ -88,8 +91,22 @@ export const generateCommentBody = (
     evalSuitesSection = `\n${heading}\n\n${tableHeaders}\n${tableRows.join("\n")}\n`;
   }
 
+  // Raw HTML lists: Markdown list items cannot hold multi-line <pre> output.
+  let semanticProjectConversionsSection = "";
+  if (semanticProjectConversions && semanticProjectConversions.length > 0) {
+    const heading = getConversionsHeading();
+    const items = semanticProjectConversions.map((conversion) =>
+      getConversionItem({ conversion, semanticProjects }),
+    );
+    semanticProjectConversionsSection = `\n${heading}\n\n<ul>\n${items.join("\n")}\n</ul>\n`;
+  }
+
+  // A failed conversion step already shows the diagnostics the CLI's error repeats.
   let errorSection = "";
-  if (hasError) {
+  const conversionFailed = semanticProjectConversions?.some((conversion) =>
+    conversion.steps.some((step) => step.exitCode !== 0),
+  );
+  if (hasError && !conversionFailed) {
     let errorText = error;
     if (errorText.length > MAX_DIAGNOSTICS_LENGTH) {
       errorText = errorText.slice(0, MAX_DIAGNOSTICS_LENGTH);
@@ -103,6 +120,7 @@ export const generateCommentBody = (
     guidesSection === "" &&
     semanticProjectsSection === "" &&
     evalSuitesSection === "" &&
+    semanticProjectConversionsSection === "" &&
     !hasError
   ) {
     return null;
@@ -121,10 +139,16 @@ export const generateCommentBody = (
 </details>`
     : "";
 
+  // Separate the expandable conversion blocks from the expandable CLI tips.
+  let separator = "";
+  if (semanticProjectConversionsSection && bottomLine) {
+    separator = "---\n\n";
+  }
+
   const body = `${HEX_COMMENT_IDENTIFIER}
 ${topLine}
-${guidesSection}${semanticProjectsSection}${evalSuitesSection}${errorSection}
-${bottomLine}`;
+${guidesSection}${semanticProjectsSection}${evalSuitesSection}${semanticProjectConversionsSection}${errorSection}
+${separator}${bottomLine}`;
   let boundedBody: string;
   if (body.length <= MAX_COMMENT_LENGTH) {
     boundedBody = body;
@@ -142,6 +166,7 @@ export const commentOnPullRequest = async (
     guides?: CliGuideResult[];
     semanticProjects?: CliSemanticProjectResult[];
     evalSuites?: CliEvalSuiteResult[];
+    semanticProjectConversions?: CliSemanticProjectConversion[];
   } & CommentPreviewParam,
 ) => {
   const { envVars } = params;
@@ -285,6 +310,73 @@ const getSemanticProjectResultRow = (params: {
         : "✅ OK";
   return `| ${result.semanticProject.name} | ${status} |`;
 };
+
+function getConversionsHeading(): string {
+  return "**Semantic Project Conversions**";
+}
+
+/**
+ * A list item naming the converted project, with a nested list holding one
+ * collapsible block per converter step. Failed projects and steps start expanded
+ * so their diagnostics are visible without a click.
+ *
+ * The project is named as it appears in the Semantic Projects table. A
+ * project that failed to convert was never uploaded, so it is named by its
+ * configured path instead.
+ */
+function getConversionItem(params: {
+  conversion: CliSemanticProjectConversion;
+  semanticProjects: CliSemanticProjectResult[] | undefined;
+}): string {
+  const { conversion, semanticProjects } = params;
+  const uploaded = semanticProjects?.find(
+    (project) => project.dirPath === conversion.path,
+  );
+  let name: string;
+  if (uploaded) {
+    name = escapeHtml(uploaded.result.semanticProject.name);
+  } else {
+    name = escapeHtml(conversion.path);
+    name = `<code>${name}</code>`;
+  }
+  const failedStep = conversion.steps.find((step) => step.exitCode !== 0);
+  const route = `${escapeHtml(conversion.from)} → ${escapeHtml(conversion.to)}`;
+  let heading: string;
+  let projectDetails: string;
+  if (failedStep) {
+    heading = `❌ <b>${name}</b> (${route}, exit code ${failedStep.exitCode})`;
+    projectDetails = "<details open>";
+  } else {
+    heading = `${name} (${route})`;
+    projectDetails = "<details>";
+  }
+  const steps = conversion.steps.map((step) => {
+    let summary = `${escapeHtml(step.from)} → ${escapeHtml(step.to)}`;
+    let details: string;
+    if (step.exitCode === 0) {
+      details = "<details>";
+    } else {
+      summary = `❌ Failed (exit code ${step.exitCode}): ${summary}`;
+      details = "<details open>";
+    }
+    let output = formatStepOutput(step);
+    if (output.length > MAX_DIAGNOSTICS_LENGTH) {
+      output = output.slice(0, MAX_DIAGNOSTICS_LENGTH);
+      output += "\n… Truncated. See the action logs for full diagnostics.";
+    }
+    output = escapeHtml(output);
+    // The blank lines let <pre> start its own HTML block, so output containing blank lines stays verbatim.
+    return `<li>${details}<summary>${summary}</summary>\n\n<pre>${output}</pre>\n\n</details></li>`;
+  });
+  return `<li>${projectDetails}<summary>${heading}</summary>\n<ul>\n${steps.join("\n")}\n</ul>\n</details></li>`;
+}
+
+/** Label the streams only when both carry output; converters usually write to one. */
+function formatStepOutput(step: { stdout: string; stderr: string }): string {
+  const { stdout, stderr } = step;
+  if (stdout && stderr) return `stdout:\n${stdout}\n\nstderr:\n${stderr}`;
+  return stdout || stderr || "No converter output.";
+}
 
 function getEvalSuitesHeading(): string {
   return "**Eval Suites**";

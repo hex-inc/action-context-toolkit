@@ -67,6 +67,7 @@ test.each(["", "custom.json", "custom.yaml", "custom.yml"])(
         "context",
         "preview",
         "--json",
+        "-vv",
         ...(configFile ? ["--config-path", configFile] : []),
       ],
       expect.any(Object),
@@ -194,4 +195,103 @@ test("preserves the preview error when posting its comment fails", async () => {
   expect(core.warning).toHaveBeenCalledWith(
     "Could not comment on the failed preview: Error: GitHub unavailable",
   );
+});
+
+test("passes per-step conversions from the single preview command to the PR comment", async () => {
+  vi.stubEnv("INPUT_COMMENT_ON_PR", "true");
+  const semanticProjectConversions = [
+    {
+      id: "project-id",
+      path: "semantic/manifest.json",
+      from: "dbt",
+      to: "hex",
+      steps: [
+        {
+          from: "dbt",
+          to: "ossie",
+          stdout: "Imported",
+          stderr: "Import warning",
+          exitCode: 0,
+        },
+        {
+          from: "ossie",
+          to: "hex",
+          stdout: "Exported",
+          stderr: "Export warning",
+          exitCode: 0,
+        },
+      ],
+    },
+  ];
+  vi.mocked(exec.exec).mockImplementation(async (_command, args, options) => {
+    if (args?.includes("preview")) {
+      options?.listeners?.stdout?.(
+        Buffer.from(
+          JSON.stringify({
+            preview_id: "1",
+            preview_link: "https://app.hex.tech/preview/1",
+            semanticProjectConversions,
+          }),
+        ),
+      );
+    }
+    return 0;
+  });
+  await vi.importActual("../main");
+  await vi.waitFor(() =>
+    expect(core.info).toHaveBeenCalledWith(
+      "Finished running hex context toolkit",
+    ),
+  );
+  expect(commentOnPullRequest).toHaveBeenCalledWith(
+    expect.objectContaining({ semanticProjectConversions }),
+  );
+  expect(exec.exec).toHaveBeenCalledTimes(2);
+});
+
+test("includes failed conversion steps in the PR comment while failing the action", async () => {
+  vi.stubEnv("INPUT_COMMENT_ON_PR", "true");
+  const error = "Could not convert dbt: unresolved field .arr";
+  const semanticProjectConversions = [
+    {
+      id: "project-id",
+      path: "semantic/manifest.json",
+      from: "dbt",
+      to: "hex",
+      steps: [
+        {
+          from: "dbt",
+          to: "ossie",
+          stdout: "Imported",
+          stderr: "",
+          exitCode: 0,
+        },
+        {
+          from: "ossie",
+          to: "hex",
+          stdout: "",
+          stderr: "Unresolved field .arr",
+          exitCode: 1,
+        },
+      ],
+    },
+  ];
+  vi.mocked(exec.exec).mockImplementation(async (_command, args, options) => {
+    if (args?.includes("preview")) {
+      options?.listeners?.stdout?.(
+        Buffer.from(JSON.stringify({ error, semanticProjectConversions })),
+      );
+      return 1;
+    }
+    return 0;
+  });
+  await vi.importActual("../main");
+  await vi.waitFor(() =>
+    expect(core.setFailed).toHaveBeenCalledWith(new Error(error)),
+  );
+  expect(commentOnPullRequest).toHaveBeenCalledWith(
+    expect.objectContaining({ error, semanticProjectConversions }),
+  );
+  expect(core.setOutput).not.toHaveBeenCalled();
+  expect(exec.exec).toHaveBeenCalledTimes(2);
 });
