@@ -107,7 +107,7 @@ semanticProjects:
 
 Conversion runs locally as part of preview creation. Consent is assumed to download necessary conversion tooling.
 
-Pull request comments include expandable output for each semantic project conversion step.
+Pull request comments include expandable output for each semantic project conversion step. A conversion with usable partial output is marked as partial, with its diagnostics expanded.
 
 ### Example config
 

@@ -54,13 +54,17 @@ export type CliSemanticProjectConversion = {
   path: string;
   from: string;
   to: string;
-  steps: {
-    from: string;
-    to: string;
-    stdout: string;
-    stderr: string;
-    exitCode: number;
-  }[];
+  steps: CliConversionStep[];
+};
+
+export type CliConversionStep = {
+  from: string;
+  to: string;
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  /** Whether the converter produced usable output. */
+  usable?: boolean;
 };
 
 export type CliContextPreviewFailure = {
