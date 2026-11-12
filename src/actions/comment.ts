@@ -2,6 +2,7 @@ import * as github from "@actions/github";
 import * as core from "@actions/core";
 import { ExpectedEnvVars } from "../env";
 import {
+  CliConversionStep,
   CliEvalSuiteResult,
   CliGuideResult,
   CliSemanticProjectResult,
@@ -104,7 +105,7 @@ export const generateCommentBody = (
   // A failed conversion step already shows the diagnostics the CLI's error repeats.
   let errorSection = "";
   const conversionFailed = semanticProjectConversions?.some((conversion) =>
-    conversion.steps.some((step) => step.exitCode !== 0),
+    conversion.steps.some((step) => getStepOutcome(step) === "failed"),
   );
   if (hasError && !conversionFailed) {
     let errorText = error;
@@ -339,22 +340,32 @@ function getConversionItem(params: {
     name = escapeHtml(conversion.path);
     name = `<code>${name}</code>`;
   }
-  const failedStep = conversion.steps.find((step) => step.exitCode !== 0);
+  const outcomes = conversion.steps.map(getStepOutcome);
+  const failedStep = conversion.steps.find(
+    (_, index) => outcomes[index] === "failed",
+  );
   const route = `${escapeHtml(conversion.from)} → ${escapeHtml(conversion.to)}`;
   let heading: string;
   let projectDetails: string;
   if (failedStep) {
     heading = `❌ <b>${name}</b> (${route}, exit code ${failedStep.exitCode})`;
     projectDetails = "<details open>";
+  } else if (outcomes.includes("partial")) {
+    heading = `⚠️ <b>${name}</b> (${route}, partial conversion)`;
+    projectDetails = "<details open>";
   } else {
     heading = `${name} (${route})`;
     projectDetails = "<details>";
   }
-  const steps = conversion.steps.map((step) => {
+  const steps = conversion.steps.map((step, index) => {
+    const outcome = outcomes[index];
     let summary = `${escapeHtml(step.from)} → ${escapeHtml(step.to)}`;
     let details: string;
-    if (step.exitCode === 0) {
+    if (outcome === "converted") {
       details = "<details>";
+    } else if (outcome === "partial") {
+      summary = `⚠️ Converted with errors: ${summary}`;
+      details = "<details open>";
     } else {
       summary = `❌ Failed (exit code ${step.exitCode}): ${summary}`;
       details = "<details open>";
@@ -369,6 +380,19 @@ function getConversionItem(params: {
     return `<li>${details}<summary>${summary}</summary>\n\n<pre>${output}</pre>\n\n</details></li>`;
   });
   return `<li>${projectDetails}<summary>${heading}</summary>\n<ul>\n${steps.join("\n")}\n</ul>\n</details></li>`;
+}
+
+/** Older CLIs omit `usable`, so a nonzero exit remains a failure for them. */
+function getStepOutcome(
+  step: CliConversionStep,
+): "converted" | "partial" | "failed" {
+  if (step.exitCode === 0) {
+    return "converted";
+  } else if (step.usable) {
+    return "partial";
+  } else {
+    return "failed";
+  }
 }
 
 /** Label the streams only when both carry output; converters usually write to one. */

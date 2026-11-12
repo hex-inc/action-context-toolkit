@@ -375,48 +375,52 @@ Import warning</pre>
 </details>`);
   });
 
-  test("expands the failed conversion and its failed step's diagnostics", () => {
-    const body = generateCommentBody({
-      envVars,
-      error: "Could not convert manifest.json (exit code 1):\n31 errors",
-      semanticProjectConversions: [
-        {
-          id: "1",
-          path: "manifest.json",
-          from: "dbt",
-          to: "hex",
-          steps: [
-            {
-              from: "dbt",
-              to: "ossie",
-              stdout: "Imported",
-              stderr: "",
-              exitCode: 0,
-            },
-            {
-              from: "ossie",
-              to: "hex",
-              stdout: "",
-              stderr: "31 errors: unresolved field .arr",
-              exitCode: 1,
-            },
-          ],
-        },
-      ],
-    });
-    expect(body).toContain("🔴 Context preview failed.");
-    expect(body).toContain(
-      "<li><details open><summary>❌ <b><code>manifest.json</code></b> (dbt → hex, exit code 1)</summary>",
-    );
-    expect(body).toContain("<li><details><summary>dbt → ossie</summary>");
-    expect(body).toContain(
-      "<li><details open><summary>❌ Failed (exit code 1): ossie → hex",
-    );
-    expect(body).toContain("<pre>31 errors: unresolved field .arr</pre>");
-    expect(body).not.toContain("Preview error");
-    expect(body).not.toContain("🟢 Success");
-    expect(body).not.toContain("hex thread create");
-  });
+  test.each([undefined, false])(
+    "expands failed conversion diagnostics when usable=%s",
+    (usable) => {
+      const body = generateCommentBody({
+        envVars,
+        error: "Could not convert manifest.json (exit code 1):\n31 errors",
+        semanticProjectConversions: [
+          {
+            id: "1",
+            path: "manifest.json",
+            from: "dbt",
+            to: "hex",
+            steps: [
+              {
+                from: "dbt",
+                to: "ossie",
+                stdout: "Imported",
+                stderr: "",
+                exitCode: 0,
+              },
+              {
+                from: "ossie",
+                to: "hex",
+                stdout: "",
+                stderr: "31 errors: unresolved field .arr",
+                exitCode: 1,
+                usable,
+              },
+            ],
+          },
+        ],
+      });
+      expect(body).toContain("🔴 Context preview failed.");
+      expect(body).toContain(
+        "<li><details open><summary>❌ <b><code>manifest.json</code></b> (dbt → hex, exit code 1)</summary>",
+      );
+      expect(body).toContain("<li><details><summary>dbt → ossie</summary>");
+      expect(body).toContain(
+        "<li><details open><summary>❌ Failed (exit code 1): ossie → hex",
+      );
+      expect(body).toContain("<pre>31 errors: unresolved field .arr</pre>");
+      expect(body).not.toContain("Preview error");
+      expect(body).not.toContain("🟢 Success");
+      expect(body).not.toContain("hex thread create");
+    },
+  );
 
   test("escapes converter text and bounds long comments", () => {
     const body = generateCommentBody({
@@ -443,6 +447,86 @@ Import warning</pre>
     expect(body).not.toContain("<diagnostic>");
     expect(body!.length).toBeLessThanOrEqual(60000);
     expect(body).toContain("truncated");
+  });
+  test("marks usable conversion output as partial without structured problem counts", () => {
+    const body = generateCommentBody({
+      envVars,
+      previewId: "1",
+      previewLink: "https://app.hex.tech/preview/1",
+      semanticProjects: [
+        {
+          dirPath: "semantic/manifest.json",
+          result: { semanticProject: { name: "acme_analytics" }, details: {} },
+        },
+      ],
+      semanticProjectConversions: [
+        {
+          id: "1",
+          path: "semantic/manifest.json",
+          from: "dbt",
+          to: "hex",
+          steps: [
+            {
+              from: "dbt",
+              to: "ossie",
+              stdout: "",
+              stderr: "Written to model.ossie.yaml",
+              exitCode: 0,
+            },
+            {
+              from: "ossie",
+              to: "hex",
+              stdout: "",
+              stderr:
+                "Failed.\nConverted model.ossie.yaml -> out/revenue/.\nEncountered 2 problems: 2 errors.",
+              exitCode: 1,
+              usable: true,
+            },
+          ],
+        },
+      ],
+    });
+    expect(body).toContain("🟢 Success.");
+    expect(body).toContain(
+      "<li><details open><summary>⚠️ <b>acme_analytics</b> (dbt → hex, partial conversion)",
+    );
+    expect(body).toContain("<li><details><summary>dbt → ossie");
+    expect(body).toContain(
+      "<li><details open><summary>⚠️ Converted with errors: ossie → hex",
+    );
+    expect(body).toContain("Encountered 2 problems: 2 errors.");
+    expect(body).not.toContain("❌");
+  });
+
+  test("keeps a later preview error after a usable partial conversion", () => {
+    const body = generateCommentBody({
+      envVars,
+      error: "Upload <failed>",
+      semanticProjectConversions: [
+        {
+          id: "1",
+          path: "model.ossie.yaml",
+          from: "ossie",
+          to: "hex",
+          steps: [
+            {
+              from: "ossie",
+              to: "hex",
+              stdout: "",
+              stderr: "Omitted an unsupported metric",
+              exitCode: 1,
+              usable: true,
+            },
+          ],
+        },
+      ],
+    });
+    expect(body).toContain("🔴 Context preview failed.");
+    expect(body).toContain("Omitted an unsupported metric");
+    expect(body).toContain("⚠️ Converted with errors: ossie → hex");
+    expect(body).toContain(
+      "<details><summary>Preview error</summary>\n\n<pre>Upload &lt;failed&gt;</pre>",
+    );
   });
 });
 

@@ -295,3 +295,77 @@ test("includes failed conversion steps in the PR comment while failing the actio
   expect(core.setOutput).not.toHaveBeenCalled();
   expect(exec.exec).toHaveBeenCalledTimes(2);
 });
+
+test.each(["push", "pull_request"])(
+  "accepts a successful preview with partial conversion output on %s",
+  async (event) => {
+    vi.stubEnv("GITHUB_EVENT_NAME", event);
+    vi.stubEnv("GITHUB_REF_NAME", "main");
+    vi.stubEnv("INPUT_COMMENT_ON_PR", "true");
+    const semanticProjectConversions = [
+      {
+        id: "project-id",
+        path: "model.ossie.yaml",
+        from: "ossie",
+        to: "hex",
+        steps: [
+          {
+            from: "ossie",
+            to: "hex",
+            stdout: "",
+            stderr:
+              "Failed.\nConverted model.ossie.yaml -> out/revenue/.\nEncountered 2 problems: 2 errors.",
+            exitCode: 1,
+            usable: true,
+          },
+        ],
+      },
+    ];
+    vi.mocked(exec.exec).mockImplementation(async (_command, args, options) => {
+      if (args?.includes("preview")) {
+        options?.listeners?.stdout?.(
+          Buffer.from(
+            JSON.stringify({
+              preview_id: "1",
+              preview_link: "https://app.hex.tech/preview/1",
+              semanticProjectConversions,
+            }),
+          ),
+        );
+      }
+      return 0;
+    });
+
+    await vi.importActual("../main");
+
+    await vi.waitFor(() =>
+      expect(core.info).toHaveBeenCalledWith(
+        "Finished running hex context toolkit",
+      ),
+    );
+    expect(core.setFailed).not.toHaveBeenCalled();
+    expect(core.setOutput).toHaveBeenCalledWith("preview_id", "1");
+    expect(core.setOutput).toHaveBeenCalledWith(
+      "preview_link",
+      "https://app.hex.tech/preview/1",
+    );
+    if (event === "push") {
+      expect(exec.exec).toHaveBeenCalledWith("hex", [
+        "--profile",
+        "ci",
+        "context",
+        "publish",
+        "1",
+      ]);
+      expect(commentOnPullRequest).not.toHaveBeenCalled();
+    } else {
+      expect(commentOnPullRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ semanticProjectConversions }),
+      );
+      expect(exec.exec).not.toHaveBeenCalledWith(
+        "hex",
+        expect.arrayContaining(["publish"]),
+      );
+    }
+  },
+);
